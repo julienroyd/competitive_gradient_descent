@@ -31,3 +31,32 @@ Re-implementation of Competitive Gradient Descent
   *
   *
   *
+  
+ 
+### Report
+
+* Background
+  * Taylor approximations
+  * Single-player optimisation
+  * Games optimisation
+
+* Derivation of the algorithm (**Guillaume**)
+  *
+  *
+  * 
+
+* Theoretical Analysis 
+  * How their approach is different?
+  * Why not taking only taking cross derivatives terms of the Hessian?
+
+
+* Experiments
+  * (see over there)
+  
+* Discussion
+  * 
+
+* Conclusion
+  *
+
+
