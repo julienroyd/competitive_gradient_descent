@@ -4,12 +4,12 @@ Re-implementation of Competitive Gradient Descent
 
 ### Implementation
 
+* Implement GDA (easy)
 * Implement CGD
   * Should we try in Pytorch or JAX ?
     * Investigate how to do (1) forward differentiation in pytorch and (2) second order derivatives in pytorch (**Irene**)
     * Try-out JAX a bit (is it complicated to use/learn?) (**Julien**)
     * Inspect and understand their Julia implementation (**Julien and Irene**)
-* Implement GDA (easy)
 * Implement other baselines (which ones?)
 
 * Implement a GAN and training pipeline on MNIST
