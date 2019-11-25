@@ -1,10 +1,20 @@
-import tqdm
+# import pipeline
+import sys
+sys.path.append('..')
+import pipeline
+from pipeline.utils.directory_tree import DirectoryTree
+from pipeline.utils.misc import create_logger
+from pipeline.utils.config import config_to_str
+
+# other imports
+from tqdm import tqdm
 import argparse
-
-from im_gen_experiments.GAN import GAN
-
+import numpy as np
+import torch
 import torch
 from torchvision import datasets, transforms
+
+from im_gen_experiments.GAN import GAN
 
 
 def get_main_args(overwritten_cmd_line=None):
@@ -30,11 +40,42 @@ def check_main_args(config):
     assert type(config) is argparse.ArgumentParser
 
 
+def set_seeds(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
 def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
     # test the config for some requirements
 
     check_main_args(config)
+
+    # Creates a directory manager that encapsulates our directory-tree structure
+
+    if dir_manager is None:
+        dir_manager = DirectoryTree(agent_alg=config.agent_alg,
+                                    task_name=config.task_name,
+                                    desc=config.desc,
+                                    seed=config.seed)
+        dir_manager.create_directories()
+
+    # Creates logger and prints config
+
+    if logger is None:
+        logger = create_logger('MASTER', config.log_level, dir_manager.seed_dir / 'logger.out')
+    logger.debug(config_to_str(config))
+
+    # Creates a progress-bar
+
+    if type(pbar) is str:
+        if pbar == "default_pbar":
+            pbar = tqdm()
+
+    if pbar is not None:
+        pbar.n = 0
+        pbar.desc += f'{dir_manager.storage_dir.name}/{dir_manager.experiment_dir.name}/{dir_manager.seed_dir.name}'
+        pbar.total = config.n_episodes
 
     # instantiates the model and dataset
 
@@ -58,7 +99,10 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
                   im_size=train_loader.dataset.data.shape[1],
                   lr=config.lr)
 
-    return None
+    # TRAINING LOOP
+
+    for epoch in range(config.n_epochs):
+
 
 
 if __name__ == '__main__':
