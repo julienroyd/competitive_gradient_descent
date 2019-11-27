@@ -95,11 +95,11 @@ class GAN(nn.Module):
         y_real = torch.ones(mb_size)
         y_fake = torch.zeros(mb_size)
 
-        x_mb_real, y_real, y_fake = x_mb_real.to(self.D.device), y_real.to(self.D.device), y_fake.to(self.D.device)
+        x_mb_real, y_real, y_fake = x_mb_real.to(self.device), y_real.to(self.device), y_fake.to(self.device)
         D_preds = self.D(x_mb_real)
         D_real_loss = BCE_loss(D_preds, y_real)
 
-        z = torch.randn((mb_size, 100)).to(self.D.device)
+        z = torch.randn((mb_size, 100)).to(self.device)
         x_mb_fake = self.G(z)
 
         D_preds = self.D(x_mb_fake)
@@ -117,7 +117,7 @@ class GAN(nn.Module):
         z = torch.randn((mb_size, 100))
         y_real = torch.ones(mb_size)
 
-        z, y_real = z.to(self.D.device), y_real.to(self.D.device)
+        z, y_real = z.to(self.device), y_real.to(self.device)
         x_mb_fake = self.G(z)
         D_preds = self.D(x_mb_fake)
         G_train_loss = BCE_loss(D_preds, y_real)
@@ -126,4 +126,4 @@ class GAN(nn.Module):
 
         self.updates_completed += 1
 
-        return D_train_loss.data[0].cpu(), G_train_loss.data[0].cpu()
+        return D_train_loss.data.cpu(), G_train_loss.data.cpu()

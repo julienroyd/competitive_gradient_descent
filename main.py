@@ -47,6 +47,8 @@ def get_main_args(overwritten_cmd_line=None):
 
 def check_main_args(config):
     assert type(config) is argparse.Namespace
+    if "cuda" in config.device:
+        assert torch.cuda.is_available(), f"config.device={config.device} but cuda is not available."
 
 
 def set_seeds(seed):
@@ -82,10 +84,10 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
         if pbar == "default_pbar":
             pbar = tqdm()
 
-    if pbar is not None:
-        pbar.n = 0
-        pbar.desc += f'{dir_manager.storage_dir.name}/{dir_manager.experiment_dir.name}/{dir_manager.seed_dir.name}'
-        pbar.total = config.n_epochs
+    # if pbar is not None:
+    #     pbar.n = 0
+    #     pbar.desc += f'{dir_manager.storage_dir.name}/{dir_manager.experiment_dir.name}/{dir_manager.seed_dir.name}'
+    #     pbar.total = config.n_epochs
 
     # Setting the random seed (for reproducibility)
 
@@ -99,7 +101,7 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+            transforms.Normalize((0.5,), (0.5,))
         ])
 
         train_loader = torch.utils.data.DataLoader(
@@ -109,7 +111,7 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         # algorithm
 
-        alg = GAN(z_size=config.z_size,
+        gan = GAN(z_size=config.z_size,
                   im_size=train_loader.dataset.data.shape[1],
                   lr=config.lr,
                   device=config.device)
@@ -128,28 +130,35 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
         D_losses = []
         G_losses = []
 
-        for x, _ in train_loader:
-            print('[%d/%d]: loss_d: %.3f, loss_g: %.3f' % (
-                (epoch + 1), epoch, torch.mean(torch.FloatTensor(D_losses)),
-                torch.mean(torch.FloatTensor(G_losses))))
-            p = 'MNIST_GAN_results/Random_results/MNIST_GAN_' + str(epoch + 1) + '.png'
-            fixed_p = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
-            show_result((epoch + 1), save=True, path=p, isFix=False)
-            show_result((epoch + 1), save=True, path=fixed_p, isFix=True)
-            train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
-            train_hist['G_losses'].append(torch.mean(torch.FloatTensor(G_losses)))
+        for x, _ in tqdm(train_loader):
 
-        print("Training finish!... save training results")
-        torch.save(alg.G.state_dict(), "MNIST_GAN_results/generator_param.pkl")
-        torch.save(alg.D.state_dict(), "MNIST_GAN_results/discriminator_param.pkl")
-        with open('MNIST_GAN_results/train_hist.pkl', 'wb') as f:
-            pickle.dump(train_hist, f)
+            gan.update_step(x)
 
-        show_train_hist(train_hist, save=True, path='MNIST_GAN_results/MNIST_GAN_train_hist.png')
+        print(f'[{epoch + 1}/{config.n_epochs}]: '
+              f'loss_d: {torch.mean(torch.FloatTensor(D_losses)):.3f}, '
+              f'loss_g: {torch.mean(torch.FloatTensor(G_losses)):.3f}')
+
+        random_results_path = dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png'
+        fixed_results_path = dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png'
+
+        show_result(gan.G, gan.fixed_z, epoch, save=True, path=random_results_path, isFix=False)
+        show_result(gan.G, gan.fixed_z, epoch, save=True, path=fixed_results_path, isFix=True)
+
+        train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
+        train_hist['G_losses'].append(torch.mean(torch.FloatTensor(G_losses)))
+
+    print("Training finish!... save training results")
+    torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
+    torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
+
+    with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
+        pickle.dump(train_hist, f)
+
+    show_train_hist(train_hist, save=True, path=dir_manager.seed_dir / 'train_hist.png')
 
     images = []
-    for e in range(config.n_epochs):
-        img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(e + 1) + '.png'
+    for epoch in range(config.n_epochs):
+        img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
         images.append(imageio.imread(img_name))
     imageio.mimsave('MNIST_GAN_results/generation_animation.gif', images, fps=5)
 
