@@ -78,20 +78,20 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
         logger = create_logger('MASTER', config.log_level, dir_manager.seed_dir / 'logger.out')
     logger.debug(config_to_str(config))
 
-    # Creates a progress-bar
-
-    if type(pbar) is str:
-        if pbar == "default_pbar":
-            pbar = tqdm()
-
+    # # Creates a progress-bar
+    #
+    # if type(pbar) is str:
+    #     if pbar == "default_pbar":
+    #         pbar = tqdm()
+    #
     # if pbar is not None:
     #     pbar.n = 0
     #     pbar.desc += f'{dir_manager.storage_dir.name}/{dir_manager.experiment_dir.name}/{dir_manager.seed_dir.name}'
     #     pbar.total = config.n_epochs
-
-    # Setting the random seed (for reproducibility)
-
-    set_seeds(config.seed)
+    #
+    # # Setting the random seed (for reproducibility)
+    #
+    # set_seeds(config.seed)
 
     # instantiates the model and dataset
 
@@ -132,7 +132,10 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         for x, _ in tqdm(train_loader):
 
-            gan.update_step(x)
+            D_loss, G_loss = gan.update_step(x)
+
+            D_losses.append(D_loss)
+            G_losses.append(G_loss)
 
         print(f'[{epoch + 1}/{config.n_epochs}]: '
               f'loss_d: {torch.mean(torch.FloatTensor(D_losses)):.3f}, '
