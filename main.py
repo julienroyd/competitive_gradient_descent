@@ -110,7 +110,7 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
     # Train the model
 
-    alg.train()
+    alg.train_model()
 
 
 if __name__ == '__main__':

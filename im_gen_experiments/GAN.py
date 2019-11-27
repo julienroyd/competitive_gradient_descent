@@ -5,6 +5,10 @@ import torch.optim as optim
 import numpy as np
 from im_gen_experiments.utils import save_generated_samples
 
+import sys
+sys.path.append('../..')
+from pipeline.utils.plots import create_fig, plot_curves
+
 class Generator(nn.Module):
     def __init__(self, input_size, output_size):
         super(Generator, self).__init__()
@@ -74,15 +78,36 @@ class GAN(nn.Module):
         self.updates_completed = 0
         self.epochs_completed = 0
 
-        self.D_loss_recorder = {}
-        self.G_loss_recorder = {}
+        self.D_loss_recorder = []  # list of lists of shape (epochs, updates)
+        self.G_loss_recorder = []  # list of lists of shape (epochs, updates)
 
-    def save_graphs(self):
-        # TODO
-        pass
+    def save_learning_curves(self):
+
+        # Adds the loss on the very first minibatch as our point for epoch=0 TODO: not ideal. should compute the loss on the whole dataset once. I want to do it without replicating too much code
+
+        d_curve = [np.array(self.D_loss_recorder)[0][0]] + list(np.array(self.D_loss_recorder).mean(axis=1))
+        g_curve = [np.array(self.G_loss_recorder)[0][0]] + list(np.array(self.G_loss_recorder).mean(axis=1))
+
+        # Creates and saves the plot
+
+        fig, ax = create_fig(axes_shape=(1,1), figsize=(8,5))
+        ax = plot_curves(ax=ax,
+                    ys=[d_curve, g_curve],
+                    labels=['D', 'G'],
+                    xlabel="Epochs",
+                    ylabel="Loss")
+        fig.savefig(self.dir_manager.seed_dir / "learning_curves.png")
 
     def save_checkpoint(self):
-        # TODO: save model, optimiser state
+        # TODO: save model in GAN class
+        # torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
+        # torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
+
+        # TODO: save model data
+        # with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
+        #     pickle.dump(None, f)
+
+        # TODO: save optimiser state
         pass
 
     def init_from_checkpoint(self):
@@ -144,17 +169,17 @@ class GAN(nn.Module):
 
         self.updates_completed += 1
 
-        self.D_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(D_train_loss.data.cpu()))
-        self.G_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(G_train_loss.data.cpu()))
+        self.D_loss_recorder[self.epochs_completed].append(float(D_train_loss.data.cpu()))
+        self.G_loss_recorder[self.epochs_completed].append(float(G_train_loss.data.cpu()))
 
-    def train(self):
+    def train_model(self):
 
         # training loop
 
         for epoch in range(self.n_epochs):
 
-            self.D_loss_recorder[f'epoch{self.epochs_completed + 1}'] = []
-            self.G_loss_recorder[f'epoch{self.epochs_completed + 1}'] = []
+            self.D_loss_recorder.append([])
+            self.G_loss_recorder.append([])
 
             # mini-batch loop
 
@@ -165,8 +190,8 @@ class GAN(nn.Module):
             # Some monitoring
 
             self.logger.info(f'[{epoch + 1}/{self.n_epochs}]: '
-                        f'loss_D: {np.mean(self.D_loss_recorder[f"epoch{self.epochs_completed + 1}"]):.3f}, '
-                        f'loss_G: {np.mean(self.G_loss_recorder[f"epoch{self.epochs_completed + 1}"]):.3f}')
+                        f'loss_D: {np.mean(self.D_loss_recorder[epoch]):.3f}, '
+                        f'loss_G: {np.mean(self.G_loss_recorder[epoch]):.3f}')
 
             self.epochs_completed += 1
 
@@ -180,16 +205,11 @@ class GAN(nn.Module):
             save_generated_samples(self.G, z_noise=self.fixed_z,
                                    path=self.dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png')
 
-        # TODO: save model in GAN class
-        # torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
-        # torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
+            # Save models and learning curves
 
-        # TODO: save model data
-        # with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
-        #     pickle.dump(None, f)
+            self.save_learning_curves()
 
-        # TODO: plot the losses
-        # show_train_hist(None, save=True, path=dir_manager.seed_dir / 'train_hist.png')
+            self.save_checkpoint()  # TODO
 
         # TODO: create animation
         # images = []
