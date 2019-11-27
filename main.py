@@ -78,20 +78,9 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
         logger = create_logger('MASTER', config.log_level, dir_manager.seed_dir / 'logger.out')
     logger.debug(config_to_str(config))
 
-    # # Creates a progress-bar
-    #
-    # if type(pbar) is str:
-    #     if pbar == "default_pbar":
-    #         pbar = tqdm()
-    #
-    # if pbar is not None:
-    #     pbar.n = 0
-    #     pbar.desc += f'{dir_manager.storage_dir.name}/{dir_manager.experiment_dir.name}/{dir_manager.seed_dir.name}'
-    #     pbar.total = config.n_epochs
-    #
-    # # Setting the random seed (for reproducibility)
-    #
-    # set_seeds(config.seed)
+    # Setting the random seed (for reproducibility)
+
+    set_seeds(config.seed)
 
     # instantiates the model and dataset
 
@@ -121,25 +110,23 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
     # TRAINING LOOP
 
-    train_hist = {}
-    train_hist['D_losses'] = []
-    train_hist['G_losses'] = []
-
     for epoch in range(config.n_epochs):
 
-        D_losses = []
-        G_losses = []
+        for x, _ in train_loader:
 
-        for x, _ in tqdm(train_loader):
+            # Parameter update
 
-            D_loss, G_loss = gan.update_step(x)
+            gan.update_step(x)
 
-            D_losses.append(D_loss)
-            G_losses.append(G_loss)
+        # Some monitoring
 
-        print(f'[{epoch + 1}/{config.n_epochs}]: '
-              f'loss_d: {torch.mean(torch.FloatTensor(D_losses)):.3f}, '
-              f'loss_g: {torch.mean(torch.FloatTensor(G_losses)):.3f}')
+        logger.info(f'[{epoch + 1}/{config.n_epochs}]: '
+               f'loss_D: {np.mean(gan.D_loss_recorder[f"epoch{gan.epochs_completed + 1}"]):.3f}, '
+               f'loss_G: {np.mean(gan.G_loss_recorder[f"epoch{gan.epochs_completed + 1}"]):.3f}')
+
+        gan.epochs_completed += 1
+
+        # Save generated images samples
 
         random_results_path = dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png'
         fixed_results_path = dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png'
@@ -147,20 +134,16 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
         show_result(gan.G, gan.fixed_z, epoch, save=True, path=random_results_path, isFix=False)
         show_result(gan.G, gan.fixed_z, epoch, save=True, path=fixed_results_path, isFix=True)
 
-        train_hist['D_losses'].append(torch.mean(torch.FloatTensor(D_losses)))
-        train_hist['G_losses'].append(torch.mean(torch.FloatTensor(G_losses)))
-
-    print("Training finish!... save training results")
-    torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
+    torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")  # TODO: save model in GAN class
     torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
 
-    with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
-        pickle.dump(train_hist, f)
+    with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:  # TODO: save model data
+        pickle.dump(None, f)
 
-    show_train_hist(train_hist, save=True, path=dir_manager.seed_dir / 'train_hist.png')
+    show_train_hist(None, save=True, path=dir_manager.seed_dir / 'train_hist.png')  # TODO: plot the losses
 
     images = []
-    for epoch in range(config.n_epochs):
+    for epoch in range(config.n_epochs):  # TODO: save animation
         img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
         images.append(imageio.imread(img_name))
     imageio.mimsave('MNIST_GAN_results/generation_animation.gif', images, fps=5)

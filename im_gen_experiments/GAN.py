@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-class generator(nn.Module):
+class Generator(nn.Module):
     def __init__(self, input_size, output_size):
-        super(generator, self).__init__()
+        super(Generator, self).__init__()
         self.fc1 = nn.Linear(input_size, 256)
         self.fc2 = nn.Linear(self.fc1.out_features, 512)
         self.fc3 = nn.Linear(self.fc2.out_features, 1024)
@@ -18,9 +18,9 @@ class generator(nn.Module):
         x = F.tanh(self.fc4(x))
         return x
 
-class discriminator(nn.Module):
+class Discriminator(nn.Module):
     def __init__(self, input_size, output_size):
-        super(discriminator, self).__init__()
+        super(Discriminator, self).__init__()
         self.fc1 = nn.Linear(input_size, 1024)
         self.fc2 = nn.Linear(self.fc1.out_features, 512)
         self.fc3 = nn.Linear(self.fc2.out_features, 256)
@@ -40,10 +40,15 @@ class GAN(nn.Module):
     def __init__(self, z_size, im_size, lr, device):
         super(GAN, self).__init__()
 
+        self.z_size = z_size
+        self.im_size = im_size
+        self.lr = lr
+        self.device = device
+
         # models
 
-        self.G = generator(input_size=z_size, output_size=im_size**2)
-        self.D = discriminator(input_size=im_size**2, output_size=1)
+        self.G = Generator(input_size=z_size, output_size=im_size**2)
+        self.D = Discriminator(input_size=im_size**2, output_size=1)
 
         # optimizers
 
@@ -57,12 +62,14 @@ class GAN(nn.Module):
         # send models on specified device
 
         self.send_to(device)
-        self.device = device
 
         # info on training
 
         self.updates_completed = 0
         self.epochs_completed = 0
+
+        self.D_loss_recorder = {f'epoch{self.epochs_completed + 1}': []}
+        self.G_loss_recorder = {f'epoch{self.epochs_completed + 1}': []}
 
     def save_graphs(self):
         # TODO
@@ -88,7 +95,7 @@ class GAN(nn.Module):
 
         self.D.zero_grad()
 
-        x_mb_real = x_mb_real.view(-1, 28 * 28)
+        x_mb_real = x_mb_real.view(-1, self.im_size**2)
 
         mb_size = x_mb_real.size()[0]
 
@@ -99,7 +106,7 @@ class GAN(nn.Module):
         D_preds = self.D(x_mb_real)
         D_real_loss = BCE_loss(D_preds, y_real)
 
-        z = torch.randn((mb_size, 100)).to(self.device)
+        z = torch.randn((mb_size, self.z_size)).to(self.device)
         x_mb_fake = self.G(z)
 
         D_preds = self.D(x_mb_fake)
@@ -114,7 +121,7 @@ class GAN(nn.Module):
 
         self.G.zero_grad()
 
-        z = torch.randn((mb_size, 100))
+        z = torch.randn((mb_size, self.z_size))
         y_real = torch.ones(mb_size)
 
         z, y_real = z.to(self.device), y_real.to(self.device)
@@ -124,6 +131,11 @@ class GAN(nn.Module):
         G_train_loss.backward()
         self.G_optimizer.step()
 
+        # Book-keeping
+
         self.updates_completed += 1
 
-        return D_train_loss.data.cpu(), G_train_loss.data.cpu()
+        self.D_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(D_train_loss.data.cpu()))
+        self.G_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(G_train_loss.data.cpu()))
+
+        return
