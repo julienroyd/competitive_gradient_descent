@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import numpy as np
 
 class Generator(nn.Module):
     def __init__(self, input_size, output_size):
@@ -37,12 +38,16 @@ class Discriminator(nn.Module):
         return x
 
 class GAN(nn.Module):
-    def __init__(self, z_size, im_size, lr, device):
+    def __init__(self, z_size, im_size, lr, n_epochs, train_loader, logger, dir_manager, device):
         super(GAN, self).__init__()
 
         self.z_size = z_size
         self.im_size = im_size
         self.lr = lr
+        self.n_epochs = n_epochs
+        self.train_loader = train_loader
+        self.logger = logger
+        self.dir_manager = dir_manager
         self.device = device
 
         # models
@@ -68,8 +73,8 @@ class GAN(nn.Module):
         self.updates_completed = 0
         self.epochs_completed = 0
 
-        self.D_loss_recorder = {f'epoch{self.epochs_completed + 1}': []}
-        self.G_loss_recorder = {f'epoch{self.epochs_completed + 1}': []}
+        self.D_loss_recorder = {}
+        self.G_loss_recorder = {}
 
     def save_graphs(self):
         # TODO
@@ -89,6 +94,9 @@ class GAN(nn.Module):
         self.device = device
 
     def update_step(self, x_mb_real):
+
+        # binary cross-entropy loss
+
         BCE_loss = nn.BCELoss()
 
         # train discriminator D
@@ -138,4 +146,52 @@ class GAN(nn.Module):
         self.D_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(D_train_loss.data.cpu()))
         self.G_loss_recorder[f'epoch{self.epochs_completed + 1}'].append(float(G_train_loss.data.cpu()))
 
-        return
+    def train(self):
+
+        # training loop
+
+        for epoch in range(self.n_epochs):
+
+            self.D_loss_recorder[f'epoch{self.epochs_completed + 1}'] = []
+            self.G_loss_recorder[f'epoch{self.epochs_completed + 1}'] = []
+
+            # mini-batch loop
+
+            for x, _ in self.train_loader:
+
+                self.update_step(x)
+
+            # Some monitoring
+
+            self.logger.info(f'[{epoch + 1}/{self.n_epochs}]: '
+                        f'loss_D: {np.mean(self.D_loss_recorder[f"epoch{self.epochs_completed + 1}"]):.3f}, '
+                        f'loss_G: {np.mean(self.G_loss_recorder[f"epoch{self.epochs_completed + 1}"]):.3f}')
+
+            self.epochs_completed += 1
+
+            # Save generated images samples
+
+            # TODO: save images
+            # random_results_path = self.dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png'
+            # fixed_results_path = self.dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png'
+
+            # show_result(self.G, self.fixed_z, epoch, save=True, path=random_results_path, isFix=False)
+            # show_result(self.G, self.fixed_z, epoch, save=True, path=fixed_results_path, isFix=True)
+
+        # TODO: save model in GAN class
+        # torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
+        # torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
+
+        # TODO: save model data
+        # with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
+        #     pickle.dump(None, f)
+
+        # TODO: plot the losses
+        # show_train_hist(None, save=True, path=dir_manager.seed_dir / 'train_hist.png')
+
+        # TODO: create animation
+        # images = []
+        # for epoch in range(config.n_epochs):
+        #     img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
+        #     images.append(imageio.imread(img_name))
+        # imageio.mimsave('MNIST_GAN_results/generation_animation.gif', images, fps=5)

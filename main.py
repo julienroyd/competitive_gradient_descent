@@ -11,14 +11,10 @@ from pipeline.utils.config import config_to_str, parse_log_level
 DirectoryTree.git_repos_to_track['cgd'] = str(os.path.join(os.path.dirname(__file__)))
 
 # other imports
-from tqdm import tqdm
 import argparse
-import pickle
-import imageio
 import numpy as np
 import torch
 from torchvision import datasets, transforms
-from im_gen_experiments.utils import show_result, show_train_hist
 
 from im_gen_experiments.GAN import GAN
 
@@ -100,53 +96,21 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         # algorithm
 
-        gan = GAN(z_size=config.z_size,
+        alg = GAN(z_size=config.z_size,
                   im_size=train_loader.dataset.data.shape[1],
                   lr=config.lr,
+                  n_epochs=config.n_epochs,
+                  train_loader=train_loader,
+                  logger=logger,
+                  dir_manager=dir_manager,
                   device=config.device)
 
     else:
         raise NotImplemented
 
-    # TRAINING LOOP
+    # Train the model
 
-    for epoch in range(config.n_epochs):
-
-        for x, _ in train_loader:
-
-            # Parameter update
-
-            gan.update_step(x)
-
-        # Some monitoring
-
-        logger.info(f'[{epoch + 1}/{config.n_epochs}]: '
-               f'loss_D: {np.mean(gan.D_loss_recorder[f"epoch{gan.epochs_completed + 1}"]):.3f}, '
-               f'loss_G: {np.mean(gan.G_loss_recorder[f"epoch{gan.epochs_completed + 1}"]):.3f}')
-
-        gan.epochs_completed += 1
-
-        # Save generated images samples
-
-        random_results_path = dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png'
-        fixed_results_path = dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png'
-
-        show_result(gan.G, gan.fixed_z, epoch, save=True, path=random_results_path, isFix=False)
-        show_result(gan.G, gan.fixed_z, epoch, save=True, path=fixed_results_path, isFix=True)
-
-    torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")  # TODO: save model in GAN class
-    torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
-
-    with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:  # TODO: save model data
-        pickle.dump(None, f)
-
-    show_train_hist(None, save=True, path=dir_manager.seed_dir / 'train_hist.png')  # TODO: plot the losses
-
-    images = []
-    for epoch in range(config.n_epochs):  # TODO: save animation
-        img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
-        images.append(imageio.imread(img_name))
-    imageio.mimsave('MNIST_GAN_results/generation_animation.gif', images, fps=5)
+    alg.train()
 
 
 if __name__ == '__main__':
