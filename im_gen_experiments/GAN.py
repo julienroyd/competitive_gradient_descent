@@ -17,7 +17,7 @@ class Generator(nn.Module):
         x = F.leaky_relu(self.fc1(input), 0.2)
         x = F.leaky_relu(self.fc2(x), 0.2)
         x = F.leaky_relu(self.fc3(x), 0.2)
-        x = F.tanh(self.fc4(x))
+        x = torch.tanh(self.fc4(x))
         return x
 
 class Discriminator(nn.Module):
@@ -35,7 +35,7 @@ class Discriminator(nn.Module):
         x = F.dropout(x, 0.3)
         x = F.leaky_relu(self.fc3(x), 0.2)
         x = F.dropout(x, 0.3)
-        x = F.sigmoid(self.fc4(x))
+        x = torch.sigmoid(self.fc4(x))
         return x
 
 class GAN(nn.Module):
@@ -108,8 +108,8 @@ class GAN(nn.Module):
 
         mb_size = x_mb_real.size()[0]
 
-        y_real = torch.ones(mb_size)
-        y_fake = torch.zeros(mb_size)
+        y_real = torch.ones((mb_size, 1))
+        y_fake = torch.zeros((mb_size, 1))
 
         x_mb_real, y_real, y_fake = x_mb_real.to(self.device), y_real.to(self.device), y_fake.to(self.device)
         D_preds = self.D(x_mb_real)
@@ -131,7 +131,7 @@ class GAN(nn.Module):
         self.G.zero_grad()
 
         z = torch.randn((mb_size, self.z_size))
-        y_real = torch.ones(mb_size)
+        y_real = torch.ones((mb_size, 1))
 
         z, y_real = z.to(self.device), y_real.to(self.device)
         x_mb_fake = self.G(z)
