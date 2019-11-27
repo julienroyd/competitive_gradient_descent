@@ -3,14 +3,15 @@ import itertools
 import matplotlib.pyplot as plt
 import os
 
-def show_result(G, fixed_z, epoch, show=False, save=False, path='result.png', isFix=False):
+def save_generated_samples(G, z_noise, path='result.png'):
+
+    # generate image samples
 
     G.eval()
-    if isFix:
-        test_images = G(fixed_z)
-    else:
-        test_images = G(torch.randn((5 * 5, 100), requires_grad=False, device=fixed_z.device))
+    test_images = G(z_noise)
     G.train()
+
+    # create figure
 
     size_figure_grid = 5
     fig, ax = plt.subplots(size_figure_grid, size_figure_grid, figsize=(5, 5))
@@ -24,15 +25,12 @@ def show_result(G, fixed_z, epoch, show=False, save=False, path='result.png', is
         ax[i, j].cla()
         ax[i, j].imshow(test_images[k, :].cpu().data.view(28, 28).numpy(), cmap='gray')
 
-    label = 'Epoch {0}'.format(epoch)
-    fig.text(0.5, 0.04, label, ha='center')
+    fig.text(0.5, 0.04, path.name, ha='center')
+
+    # save figure
+
     os.makedirs(str(path.parent), exist_ok=True)
     plt.savefig(path)
-
-    if show:
-        plt.show()
-    else:
-        plt.close()
 
 
 def show_train_hist(hist, show=False, save=False, path='Train_hist.png'):

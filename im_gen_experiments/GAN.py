@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+from im_gen_experiments.utils import save_generated_samples
 
 class Generator(nn.Module):
     def __init__(self, input_size, output_size):
@@ -171,12 +172,13 @@ class GAN(nn.Module):
 
             # Save generated images samples
 
-            # TODO: save images
-            # random_results_path = self.dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png'
-            # fixed_results_path = self.dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png'
+            sampled_noise = torch.randn((5 * 5, 100), requires_grad=False, device=self.device)
 
-            # show_result(self.G, self.fixed_z, epoch, save=True, path=random_results_path, isFix=False)
-            # show_result(self.G, self.fixed_z, epoch, save=True, path=fixed_results_path, isFix=True)
+            save_generated_samples(self.G, z_noise=sampled_noise,
+                                   path=self.dir_manager.random_results_dir / f'randomRes_epoch{epoch}.png')
+
+            save_generated_samples(self.G, z_noise=self.fixed_z,
+                                   path=self.dir_manager.fixed_results_dir / f'fixedRes_epoch{epoch}.png')
 
         # TODO: save model in GAN class
         # torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
