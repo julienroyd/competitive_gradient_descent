@@ -2,9 +2,6 @@
 import os
 import logging
 from pathlib import Path
-import sys
-sys.path.append('..')
-import pipeline
 from pipeline.utils.directory_tree import DirectoryTree
 from pipeline.utils.misc import create_logger
 from pipeline.utils.config import config_to_str, parse_log_level

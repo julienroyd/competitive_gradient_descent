@@ -4,9 +4,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from im_gen_experiments.utils import save_generated_samples
-
-import sys
-sys.path.append('../..')
 from pipeline.utils.plots import create_fig, plot_curves
 
 class Generator(nn.Module):
