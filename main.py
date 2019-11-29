@@ -28,7 +28,12 @@ def get_main_args(overwritten_cmd_line=None):
     parser.add_argument("--root", default="./storage", type=str)
     parser.add_argument("--log_level", default=logging.INFO, type=parse_log_level)
 
-    # Image Generation Experiments
+    # Algorithm hyperparameters
+
+    parser.add_argument("--resume", default=None, type=str,
+                        help="This argument is used to resume a training that had been interrupted"
+                             "To use, enter the entire path to seed_dir to be resumed: --resume PATH_TO_SEED_DIR"
+                             "Note: if defined, all other 'Algorithm hyperparameters' will not be used.")
 
     parser.add_argument("--z_size", default=100, type=int)
     parser.add_argument("--batch_size", default=128, type=float)
@@ -93,14 +98,23 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         # algorithm
 
-        alg = GAN(z_size=config.z_size,
-                  im_size=train_loader.dataset.data.shape[1],
-                  lr=config.lr,
-                  n_epochs=config.n_epochs,
-                  train_loader=train_loader,
-                  logger=logger,
-                  dir_manager=dir_manager,
-                  device=config.device)
+        if config.resume is not None:  #initialise from checkpoint in provided dir_manager
+
+            alg = GAN.init_from_checkpoint(train_loader=train_loader,
+                                           logger=logger,
+                                           dir_manager=dir_manager,
+                                           device=config.device)
+
+        else:  # initialise from provided config
+
+            alg = GAN(z_size=config.z_size,
+                      im_size=train_loader.dataset.data.shape[1],
+                      lr=config.lr,
+                      n_epochs=config.n_epochs,
+                      train_loader=train_loader,
+                      logger=logger,
+                      dir_manager=dir_manager,
+                      device=config.device)
 
     else:
         raise NotImplemented
@@ -112,4 +126,12 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
 if __name__ == '__main__':
     config = get_main_args()
-    main(config)
+
+    if config.resume is not None:
+        seed_dir = Path(config.resume)
+        dir_manager = DirectoryTree.init_from_seed_path(seed_dir)
+
+    else:
+        dir_manager = None
+
+    main(config, dir_manager=dir_manager)

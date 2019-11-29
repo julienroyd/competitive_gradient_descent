@@ -30,3 +30,4 @@ def save_generated_samples(G, z_noise, path='result.png'):
 
     os.makedirs(str(path.parent), exist_ok=True)
     plt.savefig(path)
+    plt.close(fig)

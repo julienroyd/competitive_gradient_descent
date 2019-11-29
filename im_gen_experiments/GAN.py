@@ -1,8 +1,10 @@
+import os
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+import matplotlib.pyplot as plt
 from im_gen_experiments.utils import save_generated_samples
 from pipeline.utils.plots import create_fig, plot_curves
 
@@ -52,6 +54,8 @@ class GAN(nn.Module):
         self.dir_manager = dir_manager
         self.device = device
 
+        self.seed = int(self.dir_manager.seed_dir.name.strip('seed'))
+
         # models
 
         self.G = Generator(input_size=z_size, output_size=im_size**2)
@@ -94,22 +98,78 @@ class GAN(nn.Module):
                     xlabel="Epochs",
                     ylabel="Loss")
         fig.savefig(self.dir_manager.seed_dir / "learning_curves.png")
+        plt.close(fig)
 
     def save_checkpoint(self):
-        # TODO: save model in GAN class
-        # torch.save(gan.G.state_dict(), dir_manager.seed_dir / "G_params.pt")
-        # torch.save(gan.D.state_dict(), dir_manager.seed_dir / "D_params.pt")
+        """ Saves all the information necessary to resume training as well as training history """
 
-        # TODO: save model data
-        # with open(dir_manager.recorders_dir / 'train_hist.pkl', 'wb') as f:
-        #     pickle.dump(None, f)
+        # dictionary for initialisation info
 
-        # TODO: save optimiser state
-        pass
+        init_dict = {'z_size': self.z_size,
+                     'im_size': self.im_size,
+                     'lr': self.lr,
+                     'n_epochs': self.n_epochs
+                     }
 
-    def init_from_checkpoint(self):
-        # TODO
-        pass
+        # dictionary for training history
+
+        train_dict = {'D_loss_recorder': self.D_loss_recorder,
+                     'G_loss_recorder': self.G_loss_recorder,
+                     'updates_completed': self.updates_completed,
+                     'epochs_completed': self.epochs_completed
+                     }
+
+        # dictionary for models' parameters
+
+        self.send_to('cpu')
+        params_dict = {'D_params': self.D.state_dict(),
+                       'G_params': self.G.state_dict()}
+
+        # dictionary for the optimizers' state
+
+        optimizers_dict = {'G_optimizer_state': self.G_optimizer.state_dict(),
+                           'D_optimizer_state': self.D_optimizer.state_dict()}
+
+        save_dict = {'init_dict': init_dict,
+                     'train_dict': train_dict,
+                     'params_dict': params_dict,
+                     'optimizers_dict': optimizers_dict
+                     }
+
+        torch.save(save_dict, self.dir_manager.seed_dir / 'checkpoint.pt')
+
+    @classmethod
+    def init_from_checkpoint(cls, train_loader, logger, dir_manager, device):
+
+        save_dict = torch.load(dir_manager.seed_dir / 'checkpoint.pt')
+
+        init_dict = save_dict['init_dict']
+        train_dict = save_dict['train_dict']
+        params_dict = save_dict['params_dict']
+        optimizers_dict = save_dict['optimizers_dict']
+
+        # Instantiate the algorithm
+
+        alg = cls(**init_dict,
+                  train_loader=train_loader,
+                  logger=logger,
+                  dir_manager=dir_manager,
+                  device=device)
+
+        alg.D_loss_recorder = train_dict['D_loss_recorder']
+        alg.G_loss_recorder = train_dict['G_loss_recorder']
+        alg.updates_completed = train_dict['updates_completed']
+        alg.epochs_completed = train_dict['epochs_completed']
+
+        # Loads the models' parameters and optimizers' states
+
+        alg.G.load_state_dict(params_dict['G_params'])
+        alg.D.load_state_dict(params_dict['D_params'])
+
+        alg.G_optimizer.load_state_dict(optimizers_dict['G_optimizer_state'])
+        alg.D_optimizer.load_state_dict(optimizers_dict['D_optimizer_state'])
+
+        return alg
 
     def send_to(self, device):
         self.to(device)
@@ -171,9 +231,13 @@ class GAN(nn.Module):
 
     def train_model(self):
 
+        self.logger.info('training begins')
+
         # training loop
 
-        for epoch in range(self.n_epochs):
+        for epoch in range(self.epochs_completed, self.n_epochs):
+
+            torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
 
             self.D_loss_recorder.append([])
             self.G_loss_recorder.append([])
@@ -205,8 +269,16 @@ class GAN(nn.Module):
             # Save models and learning curves
 
             self.save_learning_curves()
+            self.save_checkpoint()
 
-            self.save_checkpoint()  # TODO
+        self.logger.info('training completed')
+
+        # Saving the models one more time and removing (now useless) checkpoint
+
+        os.remove(self.dir_manager.seed_dir / 'checkpoint.pt')
+
+        torch.save(self.G.state_dict(), self.dir_manager.seed_dir / "G_params.pt")
+        torch.save(self.D.state_dict(), self.dir_manager.seed_dir / "D_params.pt")
 
         # TODO: create animation
         # images = []
