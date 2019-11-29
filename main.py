@@ -5,6 +5,7 @@ from pathlib import Path
 from pipeline.utils.directory_tree import DirectoryTree
 from pipeline.utils.misc import create_logger
 from pipeline.utils.config import config_to_str, parse_log_level
+
 DirectoryTree.git_repos_to_track['cgd'] = str(os.path.join(os.path.dirname(__file__)))
 
 # other imports
@@ -55,7 +56,6 @@ def set_seeds(seed):
 
 
 def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
-
     # test the config for some requirements
 
     check_main_args(config)
@@ -98,7 +98,7 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
 
         # algorithm
 
-        if config.resume is not None:  #initialise from checkpoint in provided dir_manager
+        if config.resume is not None:  # initialise from checkpoint in provided dir_manager
 
             alg = GAN.init_from_checkpoint(train_loader=train_loader,
                                            logger=logger,

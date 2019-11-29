@@ -2,8 +2,8 @@ import itertools
 import matplotlib.pyplot as plt
 import os
 
-def save_generated_samples(G, z_noise, path='result.png'):
 
+def save_generated_samples(G, z_noise, path='result.png'):
     # generate image samples
 
     G.eval()

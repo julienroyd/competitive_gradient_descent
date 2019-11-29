@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from im_gen_experiments.utils import save_generated_samples
 from pipeline.utils.plots import create_fig, plot_curves
 
+
 class Generator(nn.Module):
     def __init__(self, input_size, output_size):
         super(Generator, self).__init__()
@@ -22,6 +23,7 @@ class Generator(nn.Module):
         x = F.leaky_relu(self.fc3(x), 0.2)
         x = torch.tanh(self.fc4(x))
         return x
+
 
 class Discriminator(nn.Module):
     def __init__(self, input_size, output_size):
@@ -41,6 +43,7 @@ class Discriminator(nn.Module):
         x = torch.sigmoid(self.fc4(x))
         return x
 
+
 class GAN(nn.Module):
     def __init__(self, z_size, im_size, lr, n_epochs, train_loader, logger, dir_manager, device):
         super(GAN, self).__init__()
@@ -58,8 +61,8 @@ class GAN(nn.Module):
 
         # models
 
-        self.G = Generator(input_size=z_size, output_size=im_size**2)
-        self.D = Discriminator(input_size=im_size**2, output_size=1)
+        self.G = Generator(input_size=z_size, output_size=im_size ** 2)
+        self.D = Discriminator(input_size=im_size ** 2, output_size=1)
 
         # optimizers
 
@@ -91,12 +94,12 @@ class GAN(nn.Module):
 
         # Creates and saves the plot
 
-        fig, ax = create_fig(axes_shape=(1,1), figsize=(8,5))
+        fig, ax = create_fig(axes_shape=(1, 1), figsize=(8, 5))
         ax = plot_curves(ax=ax,
-                    ys=[d_curve, g_curve],
-                    labels=['D', 'G'],
-                    xlabel="Epochs",
-                    ylabel="Loss")
+                         ys=[d_curve, g_curve],
+                         labels=['D', 'G'],
+                         xlabel="Epochs",
+                         ylabel="Loss")
         fig.savefig(self.dir_manager.seed_dir / "learning_curves.png")
         plt.close(fig)
 
@@ -114,10 +117,10 @@ class GAN(nn.Module):
         # dictionary for training history
 
         train_dict = {'D_loss_recorder': self.D_loss_recorder,
-                     'G_loss_recorder': self.G_loss_recorder,
-                     'updates_completed': self.updates_completed,
-                     'epochs_completed': self.epochs_completed
-                     }
+                      'G_loss_recorder': self.G_loss_recorder,
+                      'updates_completed': self.updates_completed,
+                      'epochs_completed': self.epochs_completed
+                      }
 
         # dictionary for models' parameters
 
@@ -186,7 +189,7 @@ class GAN(nn.Module):
 
         self.D.zero_grad()
 
-        x_mb_real = x_mb_real.view(-1, self.im_size**2)
+        x_mb_real = x_mb_real.view(-1, self.im_size ** 2)
 
         mb_size = x_mb_real.size()[0]
 
@@ -245,14 +248,13 @@ class GAN(nn.Module):
             # mini-batch loop
 
             for x, _ in self.train_loader:
-
                 self.update_step(x)
 
             # Some monitoring
 
             self.logger.info(f'[{epoch + 1}/{self.n_epochs}]: '
-                        f'loss_D: {np.mean(self.D_loss_recorder[epoch]):.3f}, '
-                        f'loss_G: {np.mean(self.G_loss_recorder[epoch]):.3f}')
+                             f'loss_D: {np.mean(self.D_loss_recorder[epoch]):.3f}, '
+                             f'loss_G: {np.mean(self.G_loss_recorder[epoch]):.3f}')
 
             self.epochs_completed += 1
 
