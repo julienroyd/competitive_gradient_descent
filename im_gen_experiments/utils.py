@@ -1,9 +1,11 @@
 import itertools
 import matplotlib.pyplot as plt
 import os
+import imageio
+from pipeline.utils.misc import sorted_nicely
 
 
-def save_generated_samples(G, z_noise, path='result.png'):
+def save_generated_samples(G, z_noise, path):
     # generate image samples
 
     G.eval()
@@ -31,3 +33,13 @@ def save_generated_samples(G, z_noise, path='result.png'):
     os.makedirs(str(path.parent), exist_ok=True)
     plt.savefig(path)
     plt.close(fig)
+
+
+def save_gif(path_to_images):
+
+    im_files = sorted_nicely([str(path) for path in path_to_images.iterdir()])
+
+    images = []
+    for im in im_files:
+        images.append(imageio.imread(im))
+    imageio.mimsave(path_to_images.parents[1] / "progress.gif", images, fps=5)

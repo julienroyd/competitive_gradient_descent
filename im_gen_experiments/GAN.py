@@ -6,7 +6,7 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from im_gen_experiments.utils import save_generated_samples
+from im_gen_experiments.utils import save_generated_samples, save_gif
 from pipeline.utils.plots import create_fig, plot_curves
 
 
@@ -285,9 +285,6 @@ class GAN(nn.Module):
         torch.save(self.G.state_dict(), self.dir_manager.seed_dir / "G_params.pt")
         torch.save(self.D.state_dict(), self.dir_manager.seed_dir / "D_params.pt")
 
-        # TODO: create animation
-        # images = []
-        # for epoch in range(config.n_epochs):
-        #     img_name = 'MNIST_GAN_results/Fixed_results/MNIST_GAN_' + str(epoch + 1) + '.png'
-        #     images.append(imageio.imread(img_name))
-        # imageio.mimsave('MNIST_GAN_results/generation_animation.gif', images, fps=5)
+        # Saving an animation on fixed generated samples (throughout training) to visualise progress
+
+        save_gif(path_to_images=self.dir_manager.fixed_results_dir)
