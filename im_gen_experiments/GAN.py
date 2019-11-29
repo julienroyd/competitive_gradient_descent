@@ -5,6 +5,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 from im_gen_experiments.utils import save_generated_samples
 from pipeline.utils.plots import create_fig, plot_curves
 
@@ -64,11 +65,6 @@ class GAN(nn.Module):
         self.G = Generator(input_size=z_size, output_size=im_size ** 2)
         self.D = Discriminator(input_size=im_size ** 2, output_size=1)
 
-        # optimizers
-
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=lr)
-
         # fixed noise vectors for evaluation
 
         self.fixed_z = torch.randn((25, 100), requires_grad=False)
@@ -77,6 +73,11 @@ class GAN(nn.Module):
 
         self.send_to(device)
 
+        # optimizers
+
+        self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
+        self.D_optimizer = optim.Adam(self.D.parameters(), lr=lr)
+        
         # info on training
 
         self.updates_completed = 0
@@ -124,7 +125,6 @@ class GAN(nn.Module):
 
         # dictionary for models' parameters
 
-        self.send_to('cpu')
         params_dict = {'D_params': self.D.state_dict(),
                        'G_params': self.G.state_dict()}
 
@@ -245,6 +245,8 @@ class GAN(nn.Module):
             self.D_loss_recorder.append([])
             self.G_loss_recorder.append([])
 
+            start_time = time.time()
+            
             # mini-batch loop
 
             for x, _ in self.train_loader:
@@ -254,7 +256,8 @@ class GAN(nn.Module):
 
             self.logger.info(f'[{epoch + 1}/{self.n_epochs}]: '
                              f'loss_D: {np.mean(self.D_loss_recorder[epoch]):.3f}, '
-                             f'loss_G: {np.mean(self.G_loss_recorder[epoch]):.3f}')
+                             f'loss_G: {np.mean(self.G_loss_recorder[epoch]):.3f}, '
+                             f'time: {time.time() - start_time:.2f}s for one epoch')
 
             self.epochs_completed += 1
 
