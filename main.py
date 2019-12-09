@@ -39,6 +39,7 @@ def get_main_args(overwritten_cmd_line=None):
     parser.add_argument("--z_size", default=100, type=int)
     parser.add_argument("--batch_size", default=128, type=float)
     parser.add_argument("--lr", default=0.0002, type=float)
+    parser.add_argument("--optimizer", default="sgd", type=str, choices=["sgd", "adam"])
     parser.add_argument("--n_epochs", default=100, type=int)
 
     return parser.parse_args(overwritten_cmd_line)
@@ -110,6 +111,7 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
             alg = GAN(z_size=config.z_size,
                       im_size=train_loader.dataset.data.shape[1],
                       lr=config.lr,
+                      optimizer=config.optimizer,
                       n_epochs=config.n_epochs,
                       train_loader=train_loader,
                       logger=logger,
