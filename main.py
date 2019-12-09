@@ -21,8 +21,8 @@ def get_main_args(overwritten_cmd_line=None):
     """Defines all the command-line arguments of the main"""
     parser = argparse.ArgumentParser()
     parser.add_argument("--desc", default="", type=str, help="Description of the experiment to be run")
-    parser.add_argument("--alg_name", default="", type=str, help="Name of the algorithm")
-    parser.add_argument("--task_name", default="", type=str, help="Name of the rl-environment or dataset")
+    parser.add_argument("--alg_name", default="", type=str, help="Name of the algorithm", choices=["GDA", "CGD"])
+    parser.add_argument("--task_name", default="", type=str, help="Name of the rl-environment or dataset", choices=["imgenMNIST"])
 
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--device", default="cpu", type=str, choices=['cpu', 'cuda'])
