@@ -1,37 +1,62 @@
-import numpy as py
 import torch
+from torch.optim.optimizer import Optimizer
+
+class CGD(Optimizer):
+    """
+    Args:
+        params (iterable): iterable of parameters to optimize or dicts defining
+            parameter groups
+        lr (float): learning rate， eta
+
+    Example:
+        >>> optimizer = torch.optim.CGD(model.parameters(), lr=0.1)
+        >>> optimizer.zero_grad()
+        >>> loss_fn(model(input), target).backward()
+        >>> optimizer.step()
+    """
+
+    def __init__(self, params, eta=1e-3):
+        """Performs a single optimization step.
+
+                Arguments:
+                    params: iterable of parameters that will be optimized
+                    eta: step size
+                """
+
+        if eta < 0.0:
+            raise ValueError("Invalid learning rate: {}".format(eta))
+        defaults = dict(eta=eta)
+        super(CGD, self).__init__(params, defaults)
+
+    def __setstate__(self, state):
+        super(CGD, self).__setstate__(state)
+
+    def step(self, closure=None):
+        """Performs a single optimization step.
+
+        Arguments:
+            closure (callable, optional): A closure that reevaluates the model
+                and returns the loss.
+        """
+
+        loss = None
+        # TODO: not sure what this does yet
+        if closure is not None:
+            loss = closure()
+
+        for group in self.param_groups:
+            # TODO:
+            for p in group['params']:
+                if p.grad is None:
+                    continue
+                d_p = p.grad.data
+
+                p.data.add_(-group['eta'], d_p)
+
+        return loss
 
 
-def get_dx_f(x,y):
-    return 0
 
 
-def get_dy_f(x,y):
-    return 0
 
 
-def get_dydy_f(v,x,y):
-    return 0
-
-
-def get_dydx_f(v,x,y):
-    return 0
-
-
-def get_dxdx_f(v,x,y):
-    return 0
-
-
-def get_dxdy_f(v,x,y):
-    return 0
-
-
-def CGD(x, y, dx_f, dy_g, dxdx_f, dxdy_f, dydy_g, dydx_g, eta, gamma):
-  dx_f = dx_f(x,y)
-  dy_g = dy_g(x,y)
-  dx = dx_f - gamma * dxdy_f(dy_g, x, y) + gamma * dxdx_f(dx_f, x, y)
-  dy = dy_g - gamma * dydx_g(dx_f, x, y) + gamma * dydy_g(dy_g, x, y)
-
-  x -= eta * dx
-  y -= eta * dy
-  return x, y
