@@ -46,12 +46,13 @@ class Discriminator(nn.Module):
 
 
 class GAN(nn.Module):
-    def __init__(self, z_size, im_size, lr, n_epochs, train_loader, logger, dir_manager, device):
+    def __init__(self, z_size, im_size, lr, optimizer, n_epochs, train_loader, logger, dir_manager, device):
         super(GAN, self).__init__()
 
         self.z_size = z_size
         self.im_size = im_size
         self.lr = lr
+        self.optimizer = optimizer
         self.n_epochs = n_epochs
         self.train_loader = train_loader
         self.logger = logger
@@ -75,8 +76,13 @@ class GAN(nn.Module):
 
         # optimizers
 
-        self.G_optimizer = optim.Adam(self.G.parameters(), lr=lr)
-        self.D_optimizer = optim.Adam(self.D.parameters(), lr=lr)
+        if self.optimizer == "adam":
+            self.G_optimizer = optim.Adam(self.G.parameters(), lr=self.lr)
+            self.D_optimizer = optim.Adam(self.D.parameters(), lr=self.lr)
+
+        elif self.optimizer == "sgd":
+            self.G_optimizer = optim.SGD(self.G.parameters(), lr=self.lr)
+            self.D_optimizer = optim.SGD(self.D.parameters(), lr=self.lr)
         
         # info on training
 
@@ -112,6 +118,7 @@ class GAN(nn.Module):
         init_dict = {'z_size': self.z_size,
                      'im_size': self.im_size,
                      'lr': self.lr,
+                     'optimizer': self.optimizer,
                      'n_epochs': self.n_epochs
                      }
 
@@ -240,7 +247,7 @@ class GAN(nn.Module):
 
         for epoch in range(self.epochs_completed, self.n_epochs):
 
-            torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
+            # torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
 
             self.D_loss_recorder.append([])
             self.G_loss_recorder.append([])
