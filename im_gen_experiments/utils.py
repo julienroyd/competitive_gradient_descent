@@ -2,6 +2,7 @@ import itertools
 import matplotlib.pyplot as plt
 import os
 import imageio
+import torch
 from pipeline.utils.misc import sorted_nicely
 
 
@@ -9,7 +10,8 @@ def save_generated_samples(G, z_noise, path):
     # generate image samples
 
     G.eval()
-    test_images = G(z_noise)
+    with torch.no_grad():
+        test_images = G(z_noise)
     G.train()
 
     # create figure
