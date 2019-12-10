@@ -247,7 +247,7 @@ class GAN(nn.Module):
 
         for epoch in range(self.epochs_completed, self.n_epochs):
 
-            torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
+            # torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
 
             self.D_loss_recorder.append([])
             self.G_loss_recorder.append([])
