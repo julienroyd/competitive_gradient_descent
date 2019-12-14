@@ -34,8 +34,8 @@ def GDA_step(x, y, out_f, out_g, eta=None):
 # CGD
 
 def CGD_step(x, y, out_f, out_g, eta):
-    df_dx, df_dy = torch.autograd.grad(outputs=out_f, inputs=[x, y], create_graph=True)
-    dg_dx, dg_dy = torch.autograd.grad(outputs=out_g, inputs=[x, y], create_graph=True)
+    df_dx = torch.autograd.grad(outputs=out_f, inputs=x, create_graph=True)[0]
+    dg_dy = torch.autograd.grad(outputs=out_g, inputs=y, create_graph=True)[0]
 
     d2f_dxdy = torch.autograd.grad(outputs=df_dx, inputs=y, create_graph=False)[0]
     d2g_dydx = torch.autograd.grad(outputs=dg_dy, inputs=x, create_graph=False)[0]
@@ -49,8 +49,8 @@ def CGD_step(x, y, out_f, out_g, eta):
 # LCGD (LOLA)
 
 def LCGD_step(x, y, out_f, out_g, eta):
-    df_dx, df_dy = torch.autograd.grad(outputs=out_f, inputs=[x, y], create_graph=True)
-    dg_dx, dg_dy = torch.autograd.grad(outputs=out_g, inputs=[x, y], create_graph=True)
+    df_dx = torch.autograd.grad(outputs=out_f, inputs=x, create_graph=True)[0]
+    dg_dy = torch.autograd.grad(outputs=out_g, inputs=y, create_graph=True)[0]
 
     d2f_dxdy = torch.autograd.grad(outputs=df_dx, inputs=y, create_graph=False)[0]
     d2g_dydx = torch.autograd.grad(outputs=dg_dy, inputs=x, create_graph=False)[0]
