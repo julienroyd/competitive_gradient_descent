@@ -6,12 +6,12 @@ from notebooks.experiments12_common import *
 
 # Experiment 1
 
-def f(x, y, alpha):
+def f1(x, y, alpha):
     return alpha * x * y
 
 
-def g(*f_args):
-    return - f(*f_args)
+def g1(*f_args):
+    return - f1(*f_args)
 
 x_init = 0.5
 y_init = 0.5
@@ -22,12 +22,12 @@ experiments = list(itertools.product(alphas, learning_rates))
 
 n_updates = 100
 
-alg_names = ['GDA', 'LCGD', 'CGD']
-alg_updates = [GDA_step, LCGD_step, CGD_step]
-colors = ['cyan', 'orange', 'brown']
-markers = ['+', '<', 'o']
+alg_names = ['ConOPT', 'OGDA', 'GDA', 'LCGD', 'CGD']
+alg_updates = [ConOPT_step, OGDA_step, GDA_step, LCGD_step, CGD_step]
+colors = ['green', 'magenta', 'cyan', 'orange', 'brown']
+markers = ['s', 'x', '^', '+', 'o']
 
-recorder = run_experiment(alg_names, alg_updates, experiments, x_init, y_init, f, g, n_updates)
+recorder = run_experiment(alg_names, alg_updates, experiments, x_init, y_init, f1, g1, n_updates)
 
 # Plotting
 
