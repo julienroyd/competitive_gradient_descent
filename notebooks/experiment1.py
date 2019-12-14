@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
-from notebooks.experiments12_common import GDA_step, LCGD_step, CGD_step, run_experiment
+from notebooks.experiments12_common import *
 
 
 # Experiment 1
