@@ -51,7 +51,8 @@ for (j,i), (alpha, lr) in zip(itertools.product(range(3), range(3)), experiments
     axes[i, j].tick_params(axis='both', which='major', labelsize=12)
     axes[i, j].locator_params('x', nbins=3)
     axes[i, j].locator_params('y', nbins=3)
-    axes[i, j].legend(loc='upper right')
+    if i == 2 and j == 2:
+        axes[i, j].legend(loc='upper center', bbox_to_anchor=(-0.75, -0.25), fancybox=True, ncol=5, prop={'size': 16})
 
 plt.show()
 fig.savefig(f'experiment1.png')
