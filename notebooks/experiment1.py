@@ -55,5 +55,5 @@ for (j,i), (alpha, lr) in zip(itertools.product(range(3), range(3)), experiments
         axes[i, j].legend(loc='upper center', bbox_to_anchor=(-0.75, -0.25), fancybox=True, ncol=5, prop={'size': 16})
 
 plt.show()
-fig.savefig(f'experiment1.png')
+fig.savefig(f'experiment1.png', dpi=400)
 plt.close(fig)

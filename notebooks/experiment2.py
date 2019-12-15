@@ -64,5 +64,5 @@ for i, recorder in enumerate([recorder2, recorder3]):
             legend = axes[i, j].legend(loc='upper center', bbox_to_anchor=(-0.8, -0.4), fancybox=True, ncol=5, prop={'size': 16})
 
 plt.show()
-fig.savefig(f'experiment2.png', bbox_extra_artists=(legend,), bbox_inches='tight')
+fig.savefig(f'experiment2.png', bbox_extra_artists=(legend,), bbox_inches='tight', dpi=400)
 plt.close(fig)
