@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 from pipeline.utils.directory_tree import DirectoryTree
 from pipeline.utils.misc import create_logger
-from pipeline.utils.config import config_to_str, parse_log_level
+from pipeline.utils.config import config_to_str, parse_log_level, load_config_from_json
 
 DirectoryTree.git_repos_to_track['cgd'] = str(os.path.join(os.path.dirname(__file__)))
 
@@ -131,6 +131,7 @@ if __name__ == '__main__':
 
     if config.resume is not None:
         seed_dir = Path(config.resume)
+        config = load_config_from_json(filename=config.resume)
         dir_manager = DirectoryTree.init_from_seed_path(seed_dir)
 
     else:
