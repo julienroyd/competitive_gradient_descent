@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.autograd as autograd
+from torch.autograd import grad
 
 import numpy as np
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -82,7 +82,7 @@ class Discriminator(nn.Module):
         return torch.sigmoid(self.fc6(x))
 
 
-def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False):
+def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='GDA'):
     """
     TRAIN_RATIO : int, number of times to train the discriminator between two generator steps
     N_ITER : int, total number of training iterations for the generator
@@ -93,6 +93,12 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
     noise_std : float, standard deviation of p(z)
     frame : int, display data each 'frame' iteration
     """
+    if algorithm == 'GDA':
+        compute_update = compute_gda_update
+    elif algorithm == 'CGD':
+        compute_update = compute_cgd_update
+    else:
+        raise NotImplemented
 
     criterion = nn.BCELoss()
 
@@ -104,30 +110,39 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
     for i in tqdm(range(N_ITER)):
 
         # train the discriminator
-        D.zero_grad()
         real_batch = generate_batch(BATCHLEN)
         fake_batch = G.generate(BATCHLEN)
 
-        # Compute here the discriminator loss
+        # Compute here the total loss
         h_real = D(real_batch)
         h_fake = D(fake_batch)
 
         loss_real = criterion(h_real, torch.ones((BATCHLEN, 1)))
         loss_fake = criterion(h_fake, torch.zeros((BATCHLEN, 1)))
 
-        disc_loss = loss_real + loss_fake
-        disc_loss.backward(retain_graph=True)
-        optimizer_D.step()
+        total_loss = loss_real + loss_fake
 
-        G.zero_grad()
-        gen_loss = - loss_real - loss_fake
-        gen_loss.backward()
+        # Compute the update for both agents
+        D_update, G_update = compute_update(f=total_loss,
+                                            g=-total_loss,
+                                            x=D.parameters(),
+                                            y=G.parameters())
+
+        # Set the gradient buffer
+        for p, update in zip(D.parameters(), D_update):
+            p.grad = update
+
+        for p, update in zip(G.parameters(), G_update):
+            p.grad = update
+
+        # Updates the parameters
         optimizer_G.step()
+        optimizer_D.step()
 
         # visualization
         if i % frame == 0:
             if verbose:
-                print('step {}: discriminator: {:.3e}, generator: {:.3e}'.format(i, float(disc_loss), float(gen_loss)))
+                print('step {}: total loss: {:.3e}'.format(i, float(total_loss)))
                 print("loss_real", loss_real)
                 print("loss_fake", loss_fake)
             real_batch = generate_batch(1024)
@@ -137,6 +152,38 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
             plt.xlim(-0.5, 1.)
             plt.ylim(0, 1.5)
             plt.show()
+
+
+def compute_gda_update(f, x, g, y):
+    """
+    Computes the gradient step for both players
+    f: loss function to minimise for player X
+    x: current action (parameters) of player X
+    g: loss function to minimise for player Y
+    y: current action (parameters) of player y
+    """
+    x_update = grad(outputs=f, inputs=x, retain_graph=True)
+    y_update = grad(outputs=g, inputs=y)
+
+    return x_update, y_update
+
+def compute_cgd_update(f, x, g, y):
+    """
+    Iteratively estimate the solution for the local Nash equilibrium using the conjugate gradient method
+    f: loss function to minimise for player X
+    x: current action (parameters) of player X
+    g: loss function to minimise for player Y
+    y: current action (parameters) of player y
+    """
+    df_dx = grad(outputs=f, inputs=x, create_graph=True, retain_graph=True)
+    dg_dy = grad(outputs=g, inputs=y, create_graph=True)
+
+    x_update = None
+    y_update = None
+
+    # TODO: implement GDA using Conjugate Gradient
+
+    return x_update, y_update
 
 
 if __name__ == '__main__':
