@@ -1,0 +1,7 @@
+*.png
+*ipynb_checkpoints/
+*.idea/
+*data/
+*__pycache__/
+*storage/
+*.pyc
