@@ -113,6 +113,8 @@ class GAN(nn.Module):
     def save_checkpoint(self):
         """ Saves all the information necessary to resume training as well as training history """
 
+        self.send_to('cpu')
+
         # dictionary for initialisation info
 
         init_dict = {'z_size': self.z_size,
@@ -148,6 +150,8 @@ class GAN(nn.Module):
 
         torch.save(save_dict, self.dir_manager.seed_dir / 'checkpoint.pt')
 
+        self.send_to(self.device)
+
     @classmethod
     def init_from_checkpoint(cls, train_loader, logger, dir_manager, device):
 
@@ -179,12 +183,13 @@ class GAN(nn.Module):
         alg.G_optimizer.load_state_dict(optimizers_dict['G_optimizer_state'])
         alg.D_optimizer.load_state_dict(optimizers_dict['D_optimizer_state'])
 
+        alg.send_to(alg.device)
+
         return alg
 
     def send_to(self, device):
         self.to(device)
         self.fixed_z = self.fixed_z.to(device)
-        self.device = device
 
     def update_step(self, x_mb_real):
 
@@ -289,6 +294,7 @@ class GAN(nn.Module):
 
         os.remove(self.dir_manager.seed_dir / 'checkpoint.pt')
 
+        self.send_to(device='cpu')
         torch.save(self.G.state_dict(), self.dir_manager.seed_dir / "G_params.pt")
         torch.save(self.D.state_dict(), self.dir_manager.seed_dir / "D_params.pt")
 
