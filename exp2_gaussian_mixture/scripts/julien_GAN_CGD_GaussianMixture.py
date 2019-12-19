@@ -88,7 +88,7 @@ class Discriminator(nn.Module):
         return torch.sigmoid(self.fc6(x))
 
 
-def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='GDA', eta=0.05):
+def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='CGD', eta=0.05):
     """
     TRAIN_RATIO : int, number of times to train the discriminator between two generator steps
     N_ITER : int, total number of training iterations for the generator
@@ -209,50 +209,57 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
         # Computes the Hessian-vector product Ap
 
-        hvp_y = grad(outputs=df_dx, inputs=y, grad_outputs=p_xk, retain_graph=True)
-        hvp_x = grad(outputs=dg_dy, inputs=x, grad_outputs=p_yk, retain_graph=True)
+        hvp_x = grad(outputs=df_dx, inputs=y, grad_outputs=p_xk, retain_graph=True)
+        hvp_y = grad(outputs=dg_dy, inputs=x, grad_outputs=p_yk, retain_graph=True)
 
         with torch.no_grad():
+
+            # Computes the matrix-basisVector product Ap
+
+            Ap_x, Ap_y = [], []
+            for i in range(len(p_xk)):
+                Ap_x.append(p_xk[i] + eta * hvp_y[i])
+                Ap_y.append(p_yk[i] + eta * hvp_x[i])
 
             # Computes step size alpha_k
 
             num, denom = 0., 0.
             for i in range(len(r_xk)):
 
-                num += torch.sum(r_xk[i] ** 2.) + torch.sum(r_yk[i] ** 2.)
+                r_k_i = torch.cat([r_xk[i].flatten(), r_yk[i].flatten()])
+                num += torch.dot(r_k_i, r_k_i)
 
-                tmp_x = p_xk[i] + eta * hvp_x[i]  # TODO: make sure we use the right vector here (p_yk_i or p_xk_i)
-                tmp_y = p_yk[i] + eta * hvp_y[i]  # TODO: make sure we use the right vector here (p_yk_i or p_xk_i)
+                Ap_i = torch.cat([Ap_x[i].flatten(), Ap_y[i].flatten()])
+                p_k_i = torch.cat([p_xk[i].flatten(), p_yk[i].flatten()])
 
-                denom += torch.sum(tmp_x ** 2.) + torch.sum(tmp_y ** 2.)
-
+                denom += torch.dot(p_k_i, Ap_i)
 
             alpha_k = num / denom
 
             # Computes new updates
 
             for i in range(len(x_update)):
-                x_update[i] += alpha_k * hvp_x[i]
-                y_update[i] += alpha_k * hvp_y[i]
+                x_update[i] += alpha_k * p_xk[i]
+                y_update[i] += alpha_k * p_yk[i]
 
             # Computes new residuals
 
             r_xkplus1, r_ykplus1 = [], []
             for i in range(len(r_xk)):
-                r_xkplus1.append(r_xk[i] - alpha_k * hvp_x[i])
-                r_ykplus1.append(r_yk[i] - alpha_k * hvp_y[i])
+                r_xkplus1.append(r_xk[i] - alpha_k * Ap_x[i])
+                r_ykplus1.append(r_yk[i] - alpha_k * Ap_y[i])
 
             # Check convergence condition
 
-            r_xkplus1_norm, r_ykplus1_norm = [], []
+            r_xkplus1_squared_sum, r_ykplus1_squared_sum = 0., 0.
             for i in range(len(r_xkplus1)):
-                r_xkplus1_norm.append(torch.norm(r_xkplus1[i]))
-                r_ykplus1_norm.append(torch.norm(r_ykplus1[i]))
+                r_xkplus1_squared_sum += torch.sum(r_xkplus1[i] ** 2.)
+                r_ykplus1_squared_sum += torch.sum(r_ykplus1[i] ** 2.)
 
-            distance = torch.mean(torch.stack(r_xkplus1_norm + r_ykplus1_norm))
-            print(distance)
+            r_kplus1_norm = torch.sqrt(r_xkplus1_squared_sum + r_ykplus1_squared_sum)
+            print(r_kplus1_norm)
 
-            if distance <= 1e-6:
+            if r_kplus1_norm <= 1e-6:  # TODO: should we use a different criterion? like in the paper? i.e. ||Ax - b|| < epsilon * ||x||
                 break
 
             else:
@@ -261,8 +268,11 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
                 num, denom = 0., 0.
                 for i in range(len(r_xk)):
-                    num += torch.sum(r_xkplus1[i] ** 2.) + torch.sum(r_ykplus1[i] ** 2.)
-                    denom += torch.sum(r_xk[i] ** 2.) + torch.sum(r_yk[i] ** 2.)
+                    r_kplus1_i = torch.cat([r_xkplus1[i].flatten(), r_ykplus1[i].flatten()])
+                    denom += torch.dot(r_kplus1_i, r_kplus1_i)
+
+                    r_k_i = torch.cat([r_xk[i].flatten(), r_yk[i].flatten()])
+                    denom += torch.dot(r_k_i, r_k_i)
 
                 beta_k = num / denom
 
