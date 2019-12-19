@@ -109,6 +109,9 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
     G = Generator(hidden_size=hidden_size_G, noise_size=noise_size, noise_std=noise_std)
     D = Discriminator(hidden_size=hidden_size_D)
 
+    D_optimiser = torch.optim.SGD(G.parameters(), lr=eta)
+    G_optimiser = torch.optim.SGD(D.parameters(), lr=eta)
+
     for i in tqdm(range(N_ITER)):
 
         # train the discriminator
@@ -135,10 +138,13 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
 
             # Apply the update
             for p, update in zip(D.parameters(), D_update):
-                p.copy_(p - eta * update)
+                p.grad = update
 
             for p, update in zip(G.parameters(), G_update):
-                p.copy_(p - eta * update)
+                p.grad = update
+
+        G_optimiser.step()
+        D_optimiser.step()
 
         # visualization
         if i % frame == 0:
@@ -257,7 +263,6 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
                 r_ykplus1_squared_sum += torch.sum(r_ykplus1[i] ** 2.)
 
             r_kplus1_norm = torch.sqrt(r_xkplus1_squared_sum + r_ykplus1_squared_sum)
-            print(r_kplus1_norm)
 
             if r_kplus1_norm <= 1e-6:  # TODO: should we use a different criterion? like in the paper? i.e. ||Ax - b|| < epsilon * ||x||
                 break
@@ -290,8 +295,7 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
         print(f'WARNING: The conjugate gradient method required the maximum number of iterations '
               f'(max_it={max_it}) and had not even converged then. Is this normal?')
     else:
-        print(f'Conjugate Gradient converged after {k} iterations')
-    print(f'Compute time: {time.time() - start:.2f}')
+        print(f'Conjugate Gradient converged after {k} iterations. Compute time: {time.time() - start:.2f}')
 
     return x_update, y_update
 
