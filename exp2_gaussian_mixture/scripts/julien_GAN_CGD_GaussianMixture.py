@@ -29,7 +29,8 @@ def generate_batch(batchlen, plot=False):
     np.random.shuffle(data)
 
     if plot:
-        plt.scatter(data[:, 0], data[:, 1], s=2.0)
+        plt.scatter(data[:, 0], data[:, 1], s=2.0, color='gray')
+        plt.show()
     return torch.Tensor(data).to(device)
 
 
@@ -147,11 +148,13 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
                 print("loss_fake", loss_fake)
             real_batch = generate_batch(1024)
             fake_batch = G.generate(1024).detach()
-            plt.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data')
-            plt.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data')
+            plt.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='blue')
+            plt.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data', color='orange')
+            plt.legend(loc='upper left')
             plt.xlim(-1.5, 1.1)
             plt.ylim(-1., 2.5)
             plt.show()
+            print()
 
 
 def compute_gda_update(f, x, g, y, eta=None):
@@ -284,7 +287,7 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
 
 if __name__ == '__main__':
-    batch = generate_batch(256, plot=True)
+    batch = generate_batch(256, plot=False)
 
     GAN(TRAIN_RATIO=2,
         N_ITER=5000,
