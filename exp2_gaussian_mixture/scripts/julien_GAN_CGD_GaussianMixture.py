@@ -87,7 +87,7 @@ class Discriminator(nn.Module):
         return torch.sigmoid(self.fc6(x))
 
 
-def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='CGD'):
+def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='GDA', eta=0.05):
     """
     TRAIN_RATIO : int, number of times to train the discriminator between two generator steps
     N_ITER : int, total number of training iterations for the generator
@@ -106,9 +106,7 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
         raise NotImplemented
 
     G = Generator(hidden_size=hidden_size_G, noise_size=noise_size, noise_std=noise_std)
-    optimizer_G = torch.optim.SGD(G.parameters(), lr=1.)  # fake learning rate
     D = Discriminator(hidden_size=hidden_size_D)
-    optimizer_D = torch.optim.SGD(D.parameters(), lr=1.)  # fake learning rate
 
     for i in tqdm(range(N_ITER)):
 
@@ -130,18 +128,16 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
                                             g=-total_loss,
                                             x=list(D.parameters()),
                                             y=list(G.parameters()),
-                                            eta=0.05)  # real learning rate
+                                            eta=eta)  # real learning rate
 
-        # Set the gradient buffer
-        for p, update in zip(D.parameters(), D_update):
-            p.grad = update
+        with torch.no_grad():
 
-        for p, update in zip(G.parameters(), G_update):
-            p.grad = update
+            # Apply the update
+            for p, update in zip(D.parameters(), D_update):
+                p.copy_(p - eta * update)
 
-        # Updates the parameters
-        optimizer_G.step()
-        optimizer_D.step()
+            for p, update in zip(G.parameters(), G_update):
+                p.copy_(p - eta * update)
 
         # visualization
         if i % frame == 0:
@@ -153,8 +149,8 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
             fake_batch = G.generate(1024).detach()
             plt.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data')
             plt.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data')
-            plt.xlim(-0.5, 1.)
-            plt.ylim(0, 1.5)
+            plt.xlim(-1.5, 1.1)
+            plt.ylim(-1., 2.5)
             plt.show()
 
 
@@ -168,12 +164,6 @@ def compute_gda_update(f, x, g, y, eta=None):
     """
     x_update = list(grad(outputs=f, inputs=x, retain_graph=True))
     y_update = list(grad(outputs=g, inputs=y))
-
-    if eta is not None:
-
-        for i in range(len(x_update)):
-            x_update[i] *= eta
-            y_update[i] *= eta
 
     return x_update, y_update
 
@@ -303,4 +293,4 @@ if __name__ == '__main__':
         hidden_size_D=128,
         noise_size=512,
         noise_std=6,
-        frame=10)
+        frame=100)
