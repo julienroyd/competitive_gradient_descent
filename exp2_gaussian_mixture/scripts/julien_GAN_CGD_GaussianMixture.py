@@ -1,18 +1,17 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import grad
+from torch.distributions.multivariate_normal import MultivariateNormal
 from copy import deepcopy
 import time
-import seaborn as sns
-sns.set()
 from collections import OrderedDict
-
-import numpy as np
-from torch.distributions.multivariate_normal import MultivariateNormal
-
 from tqdm import tqdm_notebook as tqdm
 import matplotlib.pyplot as plt
+
+import seaborn as sns
+sns.set()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -58,7 +57,7 @@ def visualise_single(real_batch, fake_batch, filename=None, fake_color='cyan'):
 def visualise_all(real_batch, all_fake_batches, filename=None):
     n_rows = len(all_fake_batches.keys())
     n_cols = len(all_fake_batches[list(all_fake_batches.keys())[0]].keys())
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols + 3, n_rows * 2 + 1))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4))
 
     for i, alg_name in enumerate(all_fake_batches.keys()):
         for j, (title, data) in enumerate(all_fake_batches[alg_name].items()):
@@ -70,17 +69,18 @@ def visualise_all(real_batch, all_fake_batches, filename=None):
             else:
                 raise NotImplemented
 
+            axes[i, j].set_aspect(aspect=1.)
             axes[i, j].scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='midnightblue')
             axes[i, j].scatter(data[:, 0], data[:, 1], s=2.0, label=alg_name, color=alg_color)
             axes[i, j].set_xlim(-1., 1.5)
             axes[i, j].set_ylim(-0.5, 2.)
             if i == 0:
-                axes[i, j].set_title(title)
-            axes[i, j].tick_params(axis='both', which='major', labelsize=12)
+                axes[i, j].set_title(title, fontsize=12)
+            axes[i, j].tick_params(axis='both', which='major', labelsize=8)
             axes[i, j].locator_params('x', nbins=4)
             axes[i, j].locator_params('y', nbins=4)
             if j == n_cols-1:
-                legend = axes[i, j].legend(loc='upper center', bbox_to_anchor=(1.5, 1.), fancybox=True, ncol=1, prop={'size': 16})
+                legend = axes[i, j].legend(loc='upper center', bbox_to_anchor=(1.9, 1.), fancybox=True, ncol=1, prop={'size': 16})
                 for handle in legend.legendHandles:
                     handle.set_sizes([40.0])
     plt.show()
@@ -156,7 +156,7 @@ def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=
     fixed_batch = generate_batch(1024)  # for visualisation purposes
     all_fake_batches = OrderedDict()
 
-    for alg in ['CGD', 'GDA']:
+    for alg in ['GDA', 'CGD']:
 
         all_fake_batches[alg] = OrderedDict()
 
@@ -176,15 +176,17 @@ def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=
         criterion = nn.BCEWithLogitsLoss()
 
         for i in tqdm(range(N_ITER+1)):
-            print(i)
 
             # visualization
             if i % frame == 0:
+                print(f"Iteration {i}")
+
                 with torch.no_grad():
                     all_fake_batches[alg][f'Iteration {i}'] = G.generate(1024)
 
                 if show:
-                    visualise_single(real_batch=fixed_batch, fake_batch=all_fake_batches[alg][f'Iteration {i}'])
+                    visualise_single(real_batch=fixed_batch, fake_batch=all_fake_batches[alg][f'Iteration {i}'],
+                                     fake_color='cyan' if alg == "GDA" else "brown")
 
             # train the discriminator
             real_batch = generate_batch(BATCHLEN)
@@ -330,7 +332,7 @@ def compute_cgd_update(f, x, g, y, eta, max_it=10):
             r_kplus1_norm = torch.sqrt(r_xkplus1_squared_sum + r_ykplus1_squared_sum)
             update_norm = torch.sqrt(x_update_squared_norm + y_update_squared_norm)
 
-            if r_kplus1_norm <= 1e-6 * update_norm:
+            if r_kplus1_norm <= 1e-6:
                 break
 
             else:
@@ -356,13 +358,6 @@ def compute_cgd_update(f, x, g, y, eta, max_it=10):
                 r_xk = deepcopy(r_xkplus1)
                 r_yk = deepcopy(r_ykplus1)
 
-
-    if k+1 == max_it:
-        print(f'WARNING: The conjugate gradient method required the maximum number of iterations '
-              f'(max_it={max_it}) and had not even converged then. Is this normal?')
-    else:
-        print(f'Conjugate Gradient converged after {k} iterations. Compute time: {time.time() - start:.2f}')
-
     return x_update, y_update
 
 
@@ -377,4 +372,5 @@ if __name__ == '__main__':
         noise_size=512,
         noise_std=6,
         frame=250,
-        show=True)
+        eta=0.05,
+        show=False)
