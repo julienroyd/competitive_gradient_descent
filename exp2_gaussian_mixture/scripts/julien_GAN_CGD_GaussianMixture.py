@@ -4,6 +4,9 @@ import torch.nn.functional as F
 from torch.autograd import grad
 from copy import deepcopy
 import time
+import seaborn as sns
+sns.set()
+from collections import OrderedDict
 
 import numpy as np
 from torch.distributions.multivariate_normal import MultivariateNormal
@@ -32,6 +35,59 @@ def generate_batch(batchlen, plot=False):
         plt.scatter(data[:, 0], data[:, 1], s=2.0, color='gray')
         plt.show()
     return torch.Tensor(data).to(device)
+
+
+def visualise_single(real_batch, fake_batch, filename=None, fake_color='cyan'):
+    fig, ax = plt.subplots(1,1, figsize=(5,5))
+    ax.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='midnightblue')
+    ax.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data', color=fake_color)
+    ax.legend(loc='upper left')
+    ax.set_xlim(-1.5, 2.)
+    ax.set_ylim(-1., 2.5)
+    ax.tick_params(axis='both', which='major', labelsize=12)
+    ax.locator_params('x', nbins=4)
+    ax.locator_params('y', nbins=4)
+    plt.show()
+    if filename is not None:
+        fig.savefig(filename, dpi=300, bbox_inches='tight')
+
+    plt.close(fig)
+
+    return fake_batch
+
+def visualise_all(real_batch, all_fake_batches, filename=None):
+    n_rows = len(all_fake_batches.keys())
+    n_cols = len(all_fake_batches[list(all_fake_batches.keys())[0]].keys())
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(3 * n_cols + 3, n_rows * 2 + 1))
+
+    for i, alg_name in enumerate(all_fake_batches.keys()):
+        for j, (title, data) in enumerate(all_fake_batches[alg_name].items()):
+
+            if alg_name == 'GDA':
+                alg_color = 'cyan'
+            elif alg_name == 'CGD':
+                alg_color = 'brown'
+            else:
+                raise NotImplemented
+
+            axes[i, j].scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='midnightblue')
+            axes[i, j].scatter(data[:, 0], data[:, 1], s=2.0, label=alg_name, color=alg_color)
+            axes[i, j].set_xlim(-1., 1.5)
+            axes[i, j].set_ylim(-0.5, 2.)
+            if i == 0:
+                axes[i, j].set_title(title)
+            axes[i, j].tick_params(axis='both', which='major', labelsize=12)
+            axes[i, j].locator_params('x', nbins=4)
+            axes[i, j].locator_params('y', nbins=4)
+            if j == n_cols-1:
+                legend = axes[i, j].legend(loc='upper center', bbox_to_anchor=(1.5, 1.), fancybox=True, ncol=1, prop={'size': 16})
+                for handle in legend.legendHandles:
+                    handle.set_sizes([40.0])
+    plt.show()
+    if filename is not None:
+        fig.savefig(filename, dpi=300, bbox_inches='tight', bbox_extra_artists=(legend,))
+
+    plt.close(fig)
 
 
 # Define the generator
@@ -85,7 +141,7 @@ class Discriminator(nn.Module):
         return self.fc6(x)
 
 
-def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='CGD', eta=0.05):
+def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, eta=0.05, show=True):
     """
     TRAIN_RATIO : int, number of times to train the discriminator between two generator steps
     N_ITER : int, total number of training iterations for the generator
@@ -96,69 +152,72 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
     noise_std : float, standard deviation of p(z)
     frame : int, display data each 'frame' iteration
     """
-    if algorithm == 'GDA':
-        compute_update = compute_gda_update
-    elif algorithm == 'CGD':
-        compute_update = compute_cgd_update
-    else:
-        raise NotImplemented
 
-    G = Generator(hidden_size=hidden_size_G, noise_size=noise_size, noise_std=noise_std)
-    D = Discriminator(hidden_size=hidden_size_D)
+    fixed_batch = generate_batch(1024)  # for visualisation purposes
+    all_fake_batches = OrderedDict()
 
-    D_optimiser = torch.optim.SGD(G.parameters(), lr=eta)
-    G_optimiser = torch.optim.SGD(D.parameters(), lr=eta)
+    for alg in ['GDA', 'CGD']:
 
-    criterion = nn.BCEWithLogitsLoss()
+        all_fake_batches[alg] = OrderedDict()
 
-    for i in tqdm(range(N_ITER)):
+        if alg == 'GDA':
+            compute_update = compute_gda_update
+        elif alg == 'CGD':
+            compute_update = compute_cgd_update
+        else:
+            raise NotImplemented
 
-        # train the discriminator
-        real_batch = generate_batch(BATCHLEN)
-        fake_batch = G.generate(BATCHLEN)
+        G = Generator(hidden_size=hidden_size_G, noise_size=noise_size, noise_std=noise_std)
+        D = Discriminator(hidden_size=hidden_size_D)
 
-        # Compute here the total loss
-        h_real = D(real_batch)
-        h_fake = D(fake_batch)
+        D_optimiser = torch.optim.SGD(G.parameters(), lr=eta)
+        G_optimiser = torch.optim.SGD(D.parameters(), lr=eta)
 
-        loss_real = criterion(h_real, torch.ones((BATCHLEN, 1)))
-        loss_fake = criterion(h_fake, torch.zeros((BATCHLEN, 1)))
+        criterion = nn.BCEWithLogitsLoss()
 
-        total_loss = loss_real + loss_fake
+        for i in tqdm(range(N_ITER+1)):
 
-        # Compute the update for both agents
-        D_update, G_update = compute_update(f=total_loss,
-                                            g=-total_loss,
-                                            x=list(D.parameters()),
-                                            y=list(G.parameters()),
-                                            eta=eta)  # real learning rate
+            # visualization
+            if i % frame == 0:
+                with torch.no_grad():
+                    all_fake_batches[alg][f'Iteration {i}'] = G.generate(1024)
 
-        with torch.no_grad():
+                if show:
+                    visualise_single(real_batch=fixed_batch, fake_batch=all_fake_batches[alg][f'Iteration {i}'])
 
-            # Apply the update
-            for p, update in zip(D.parameters(), D_update):
-                p.grad = update
+            # train the discriminator
+            real_batch = generate_batch(BATCHLEN)
+            fake_batch = G.generate(BATCHLEN)
 
-            for p, update in zip(G.parameters(), G_update):
-                p.grad = update
+            # Compute here the total loss
+            h_real = D(real_batch)
+            h_fake = D(fake_batch)
 
-        G_optimiser.step()
-        D_optimiser.step()
+            loss_real = criterion(h_real, torch.ones((BATCHLEN, 1)))
+            loss_fake = criterion(h_fake, torch.zeros((BATCHLEN, 1)))
 
-        # visualization
-        if i % frame == 0:
-            if verbose:
-                print('step {}: total loss: {:.3e}'.format(i, float(total_loss)))
-                print("loss_real", loss_real)
-                print("loss_fake", loss_fake)
-            real_batch = generate_batch(1024)
-            fake_batch = G.generate(1024).detach()
-            plt.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='blue')
-            plt.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data', color='orange')
-            plt.legend(loc='upper left')
-            plt.xlim(-1.5, 2.)
-            plt.ylim(-1., 2.5)
-            plt.show()
+            total_loss = loss_real + loss_fake
+
+            # Compute the update for both agents
+            D_update, G_update = compute_update(f=total_loss,
+                                                g=-total_loss,
+                                                x=list(D.parameters()),
+                                                y=list(G.parameters()),
+                                                eta=eta)  # real learning rate
+
+            with torch.no_grad():
+
+                # Apply the update
+                for p, update in zip(D.parameters(), D_update):
+                    p.grad = update
+
+                for p, update in zip(G.parameters(), G_update):
+                    p.grad = update
+
+            G_optimiser.step()
+            D_optimiser.step()
+
+    visualise_all(real_batch=fixed_batch, all_fake_batches=all_fake_batches, filename="Experiment2_GAN_GM")
 
 
 def compute_gda_update(f, x, g, y, eta=None):
@@ -302,10 +361,11 @@ if __name__ == '__main__':
     batch = generate_batch(256, plot=False)
 
     GAN(TRAIN_RATIO=2,
-        N_ITER=5000,
+        N_ITER=450,
         BATCHLEN=128,
         hidden_size_G=128,
         hidden_size_D=128,
         noise_size=512,
         noise_std=6,
-        frame=100)
+        frame=50,
+        show=False)
