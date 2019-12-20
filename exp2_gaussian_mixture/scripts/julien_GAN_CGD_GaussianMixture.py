@@ -9,11 +9,17 @@ import time
 from collections import OrderedDict
 from tqdm import tqdm_notebook as tqdm
 import matplotlib.pyplot as plt
+import random
 
 import seaborn as sns
 sns.set()
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+torch.manual_seed(456)
+np.random.seed(456)
+random.seed(456)
+
 
 
 def generate_batch(batchlen, plot=False):
@@ -373,4 +379,4 @@ if __name__ == '__main__':
         noise_std=6,
         frame=250,
         eta=0.05,
-        show=False)
+        show=True)
