@@ -34,9 +34,6 @@ def generate_batch(batchlen, plot=False):
     return torch.Tensor(data).to(device)
 
 
-def homemade_BCE(outputs, labels):
-    return -torch.mean(labels * torch.log(outputs) + (1. - labels) * torch.log(1. - outputs))
-
 # Define the generator
 class Generator(nn.Module):
     def __init__(self, hidden_size=0, noise_size=1, noise_std=1.):
@@ -85,7 +82,7 @@ class Discriminator(nn.Module):
         x = F.relu(self.fc3(x))
         x = F.relu(self.fc4(x))
         x = F.relu(self.fc5(x))
-        return torch.sigmoid(self.fc6(x))
+        return self.fc6(x)
 
 
 def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D=0, noise_size=1, noise_std=1., frame=1000, verbose=False, algorithm='CGD', eta=0.05):
@@ -112,6 +109,8 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
     D_optimiser = torch.optim.SGD(G.parameters(), lr=eta)
     G_optimiser = torch.optim.SGD(D.parameters(), lr=eta)
 
+    criterion = nn.BCEWithLogitsLoss()
+
     for i in tqdm(range(N_ITER)):
 
         # train the discriminator
@@ -122,8 +121,8 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
         h_real = D(real_batch)
         h_fake = D(fake_batch)
 
-        loss_real = homemade_BCE(h_real, torch.ones((BATCHLEN, 1)))
-        loss_fake = homemade_BCE(h_fake, torch.zeros((BATCHLEN, 1)))
+        loss_real = criterion(h_real, torch.ones((BATCHLEN, 1)))
+        loss_fake = criterion(h_fake, torch.zeros((BATCHLEN, 1)))
 
         total_loss = loss_real + loss_fake
 
@@ -157,10 +156,9 @@ def GAN(TRAIN_RATIO=1, N_ITER=5000, BATCHLEN=128, hidden_size_G=0, hidden_size_D
             plt.scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='blue')
             plt.scatter(fake_batch[:, 0], fake_batch[:, 1], s=2.0, label='fake data', color='orange')
             plt.legend(loc='upper left')
-            plt.xlim(-1.5, 1.1)
+            plt.xlim(-1.5, 2.)
             plt.ylim(-1., 2.5)
             plt.show()
-            print()
 
 
 def compute_gda_update(f, x, g, y, eta=None):
