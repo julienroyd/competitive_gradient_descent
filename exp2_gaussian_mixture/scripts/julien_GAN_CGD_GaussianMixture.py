@@ -156,7 +156,7 @@ def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=
     fixed_batch = generate_batch(1024)  # for visualisation purposes
     all_fake_batches = OrderedDict()
 
-    for alg in ['GDA', 'CGD']:
+    for alg in ['CGD', 'GDA']:
 
         all_fake_batches[alg] = OrderedDict()
 
@@ -176,6 +176,7 @@ def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=
         criterion = nn.BCEWithLogitsLoss()
 
         for i in tqdm(range(N_ITER+1)):
+            print(i)
 
             # visualization
             if i % frame == 0:
@@ -233,7 +234,7 @@ def compute_gda_update(f, x, g, y, eta=None):
 
     return x_update, y_update
 
-def compute_cgd_update(f, x, g, y, eta, max_it=100):
+def compute_cgd_update(f, x, g, y, eta, max_it=10):
     """
     Iteratively estimate the solution for the local Nash equilibrium using the conjugate gradient method
     f: loss function to minimise for player X
@@ -247,6 +248,9 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
     df_dx = grad(outputs=f, inputs=x, create_graph=True, retain_graph=True)
     dg_dy = grad(outputs=g, inputs=y, create_graph=True, retain_graph=True)
+
+    df_dy = grad(outputs=f, inputs=y, create_graph=True, retain_graph=True)
+    dg_dx = grad(outputs=g, inputs=x, create_graph=True, retain_graph=True)
 
     with torch.no_grad():
 
@@ -272,8 +276,8 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
         # Computes the Hessian-vector product Ap
 
-        hvp_x = grad(outputs=df_dx, inputs=y, grad_outputs=p_xk, retain_graph=True)
-        hvp_y = grad(outputs=dg_dy, inputs=x, grad_outputs=p_yk, retain_graph=True)
+        hvp_x = grad(outputs=df_dy, inputs=x, grad_outputs=p_yk, retain_graph=True)
+        hvp_y = grad(outputs=dg_dx, inputs=y, grad_outputs=p_xk, retain_graph=True)
 
         with torch.no_grad():
 
@@ -281,8 +285,8 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
 
             Ap_x, Ap_y = [], []
             for i in range(len(p_xk)):
-                Ap_x.append(p_xk[i] + eta * hvp_y[i])
-                Ap_y.append(p_yk[i] + eta * hvp_x[i])
+                Ap_x.append(p_xk[i] + eta * hvp_x[i])
+                Ap_y.append(p_yk[i] + eta * hvp_y[i])
 
             # Computes step size alpha_k
 
@@ -315,13 +319,18 @@ def compute_cgd_update(f, x, g, y, eta, max_it=100):
             # Check convergence condition
 
             r_xkplus1_squared_sum, r_ykplus1_squared_sum = 0., 0.
+            x_update_squared_norm, y_update_squared_norm = 0., 0.
             for i in range(len(r_xkplus1)):
                 r_xkplus1_squared_sum += torch.sum(r_xkplus1[i] ** 2.)
                 r_ykplus1_squared_sum += torch.sum(r_ykplus1[i] ** 2.)
 
-            r_kplus1_norm = torch.sqrt(r_xkplus1_squared_sum + r_ykplus1_squared_sum)
+                x_update_squared_norm += torch.sum(x_update[i] ** 2.)
+                y_update_squared_norm += torch.sum(y_update[i] ** 2.)
 
-            if r_kplus1_norm <= 1e-6:  # TODO: should we use a different criterion? like in the paper? i.e. ||Ax - b|| < epsilon * ||x||
+            r_kplus1_norm = torch.sqrt(r_xkplus1_squared_sum + r_ykplus1_squared_sum)
+            update_norm = torch.sqrt(x_update_squared_norm + y_update_squared_norm)
+
+            if r_kplus1_norm <= 1e-6 * update_norm:
                 break
 
             else:
@@ -361,11 +370,11 @@ if __name__ == '__main__':
     batch = generate_batch(256, plot=False)
 
     GAN(TRAIN_RATIO=2,
-        N_ITER=450,
+        N_ITER=2500,
         BATCHLEN=128,
         hidden_size_G=128,
         hidden_size_D=128,
         noise_size=512,
         noise_std=6,
-        frame=50,
-        show=False)
+        frame=250,
+        show=True)
