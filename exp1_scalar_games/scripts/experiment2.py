@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import itertools
-from notebooks.experiments12_common import *
+from exp1_scalar_games.scripts.experiments12_common import *
 
 
 # Experiment 2
