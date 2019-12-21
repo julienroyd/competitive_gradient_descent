@@ -1,4 +1,6 @@
 # import pipeline
+import sys
+sys.path.append('..')
 import os
 import logging
 from pathlib import Path
@@ -6,7 +8,8 @@ from pipeline.utils.directory_tree import DirectoryTree
 from pipeline.utils.misc import create_logger
 from pipeline.utils.config import config_to_str, parse_log_level, load_config_from_json
 
-DirectoryTree.git_repos_to_track['cgd'] = str(os.path.join(os.path.dirname(__file__)))
+DirectoryTree.git_repos_to_track['cgd'] = str(
+    os.path.join(*([os.path.dirname(os.path.dirname(__file__))])))
 
 # other imports
 import argparse
