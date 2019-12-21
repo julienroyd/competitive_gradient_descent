@@ -61,12 +61,21 @@ def visualise_single(real_batch, fake_batch, filename=None, fake_color='cyan'):
     return fake_batch
 
 def visualise_all(real_batch, all_fake_batches, filename=None):
-    n_rows = len(all_fake_batches.keys())
-    n_cols = len(all_fake_batches[list(all_fake_batches.keys())[0]].keys())
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(5 * n_cols, 4))
+    n_algorithms = len(all_fake_batches.keys())
+    n_graphs_per_alg = len(all_fake_batches[list(all_fake_batches.keys())[0]].keys())
+    legends = []
 
-    for i, alg_name in enumerate(all_fake_batches.keys()):
-        for j, (title, data) in enumerate(all_fake_batches[alg_name].items()):
+    n_rows = n_algorithms * 2
+    n_cols = n_graphs_per_alg // 2
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols + 8, 4 * n_rows))
+
+    for i in range(n_rows):
+
+        alg_name = list(all_fake_batches.keys())[i // n_algorithms]
+
+        for j in range(n_cols):
+
+            title, data = list(all_fake_batches[alg_name].items())[(i % n_algorithms) * n_cols + j]
 
             if alg_name == 'GDA':
                 alg_color = 'cyan'
@@ -78,20 +87,26 @@ def visualise_all(real_batch, all_fake_batches, filename=None):
             axes[i, j].set_aspect(aspect=1.)
             axes[i, j].scatter(real_batch[:, 0], real_batch[:, 1], s=2.0, label='real data', color='midnightblue')
             axes[i, j].scatter(data[:, 0], data[:, 1], s=2.0, label=alg_name, color=alg_color)
-            axes[i, j].set_xlim(-1., 1.5)
-            axes[i, j].set_ylim(-0.5, 2.)
-            if i == 0:
-                axes[i, j].set_title(title, fontsize=12)
+            axes[i, j].set_xlim(-0.75, 1.25)
+            axes[i, j].set_ylim(-0.25, 1.75)
+            axes[i, j].set_title(title, fontsize=12, pad=0)
             axes[i, j].tick_params(axis='both', which='major', labelsize=8)
+            axes[i, j].set_yticklabels([])
+            axes[i, j].set_xticklabels([])
             axes[i, j].locator_params('x', nbins=4)
             axes[i, j].locator_params('y', nbins=4)
-            if j == n_cols-1:
-                legend = axes[i, j].legend(loc='upper center', bbox_to_anchor=(1.9, 1.), fancybox=True, ncol=1, prop={'size': 16})
-                for handle in legend.legendHandles:
-                    handle.set_sizes([40.0])
+            if j == n_cols-1 and (i % n_algorithms) == 0:
+                legends.append(axes[i, j].legend(loc='upper center', bbox_to_anchor=(1.6, 1.), fancybox=True, ncol=1, prop={'size': 16}))
+
+    fig.tight_layout()
+
+    for legend in legends:
+        for handle in legend.legendHandles:
+            handle.set_sizes([40.0])
+
     plt.show()
     if filename is not None:
-        fig.savefig(filename, dpi=300, bbox_inches='tight', bbox_extra_artists=(legend,))
+        fig.savefig(filename, dpi=300, bbox_inches='tight', bbox_extra_artists=legends)
 
     plt.close(fig)
 
@@ -379,4 +394,4 @@ if __name__ == '__main__':
         noise_std=6,
         frame=250,
         eta=0.05,
-        show=True)
+        show=False)
