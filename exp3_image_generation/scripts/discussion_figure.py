@@ -1,18 +1,20 @@
 from pathlib import Path
 import torch
 import matplotlib.pyplot as plt
-import itertools
 from collections import OrderedDict
 
 from pipeline.utils.directory_tree import DirectoryTree
 from pipeline.utils.config import load_config_from_json
 
-from im_gen_experiments.GAN import Generator
+from exp3_image_generation.src.GAN import Generator
 
-STORAGE_PATH = Path('../storage/Ju5_f5afc59_GDA_imgenMNIST_grid_AdamLearningRates')
+STORAGE_PATH = Path('../storage/Ju11_20a6842_CGD_imgenMNIST_grid_FinalExperimentOverLRs')
 N_SAMPLES_PER_MODEL = 5
 
 if __name__ == '__main__':
+
+    seed = 789
+    torch.manual_seed(seed)
 
     # get all seed directories
 
@@ -62,5 +64,5 @@ if __name__ == '__main__':
 
     # save figure
 
-    plt.savefig('GAN_sensitive_to_lr.png', bbox_extra_artists=texts, bbox_inches='tight', dpi=400)
+    plt.savefig(f'{STORAGE_PATH.name}_seed{seed}.png', bbox_extra_artists=texts, bbox_inches='tight', dpi=400)
     plt.close(fig)
