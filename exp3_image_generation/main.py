@@ -116,7 +116,8 @@ def main(config, dir_manager=None, logger=None, pbar="default_pbar"):
                       train_loader=train_loader,
                       logger=logger,
                       dir_manager=dir_manager,
-                      device=config.device)
+                      device=config.device,
+                      alg=config.alg_name)
 
     else:
         raise NotImplemented

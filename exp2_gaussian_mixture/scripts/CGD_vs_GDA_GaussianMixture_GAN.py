@@ -244,7 +244,7 @@ def GAN(TRAIN_RATIO=1, N_ITER=250, BATCHLEN=128, hidden_size_G=0, hidden_size_D=
     visualise_all(real_batch=fixed_batch, all_fake_batches=all_fake_batches, filename="Experiment2_GAN_GM")
 
 
-def compute_gda_update(f, x, g, y, eta=None):
+def compute_gda_update(f, x, g, y, eta=None, max_it=None):
     """
     Computes the gradient step for both players
     f: loss function to minimise for player X

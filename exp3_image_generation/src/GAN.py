@@ -6,7 +6,8 @@ import torch.optim as optim
 import numpy as np
 import matplotlib.pyplot as plt
 import time
-from im_gen_experiments.utils import save_generated_samples, save_gif
+from exp3_image_generation.src.utils import save_generated_samples, save_gif
+from exp2_gaussian_mixture.scripts.CGD_vs_GDA_GaussianMixture_GAN import compute_gda_update, compute_cgd_update
 from pipeline.utils.plots import create_fig, plot_curves
 
 
@@ -41,12 +42,12 @@ class Discriminator(nn.Module):
         x = F.dropout(x, 0.3)
         x = F.leaky_relu(self.fc3(x), 0.2)
         x = F.dropout(x, 0.3)
-        x = torch.sigmoid(self.fc4(x))
+        x = self.fc4(x)
         return x
 
 
 class GAN(nn.Module):
-    def __init__(self, z_size, im_size, lr, optimizer, n_epochs, train_loader, logger, dir_manager, device):
+    def __init__(self, z_size, im_size, lr, optimizer, n_epochs, train_loader, logger, dir_manager, device, alg):
         super(GAN, self).__init__()
 
         self.z_size = z_size
@@ -58,6 +59,13 @@ class GAN(nn.Module):
         self.logger = logger
         self.dir_manager = dir_manager
         self.device = device
+
+        if alg == 'GDA':
+            self.compute_update = compute_gda_update
+        elif alg == 'CGD':
+            self.compute_update = compute_cgd_update
+        else:
+            raise NotImplemented
 
         self.seed = int(self.dir_manager.seed_dir.name.strip('seed'))
 
@@ -94,7 +102,7 @@ class GAN(nn.Module):
 
     def save_learning_curves(self):
 
-        # Adds the loss on the very first minibatch as our point for epoch=0 TODO: not ideal. should compute the loss on the whole dataset once. I want to do it without replicating too much code
+        # Adds the loss on the very first minibatch as our point for epoch=0
 
         d_curve = [np.array(self.D_loss_recorder)[0][0]] + list(np.array(self.D_loss_recorder).mean(axis=1))
         g_curve = [np.array(self.G_loss_recorder)[0][0]] + list(np.array(self.G_loss_recorder).mean(axis=1))
@@ -195,11 +203,9 @@ class GAN(nn.Module):
 
         # binary cross-entropy loss
 
-        BCE_loss = nn.BCELoss()
+        BCElogits_loss = nn.BCEWithLogitsLoss()
 
-        # train discriminator D
-
-        self.D.zero_grad()
+        # construct loss
 
         x_mb_real = x_mb_real.view(-1, self.im_size ** 2)
 
@@ -210,39 +216,41 @@ class GAN(nn.Module):
 
         x_mb_real, y_real, y_fake = x_mb_real.to(self.device), y_real.to(self.device), y_fake.to(self.device)
         D_preds = self.D(x_mb_real)
-        D_real_loss = BCE_loss(D_preds, y_real)
+        loss_real = BCElogits_loss(D_preds, y_real)
 
         z = torch.randn((mb_size, self.z_size)).to(self.device)
         x_mb_fake = self.G(z)
 
         D_preds = self.D(x_mb_fake)
-        D_fake_loss = BCE_loss(D_preds, y_fake)
+        loss_fake = BCElogits_loss(D_preds, y_fake)
 
-        D_train_loss = D_real_loss + D_fake_loss
+        total_loss = loss_real + loss_fake
 
-        D_train_loss.backward()
+        # Compute the update for both agents
+        D_update, G_update = self.compute_update(f=total_loss,
+                                                 g=-total_loss,
+                                                 x=list(self.D.parameters()),
+                                                 y=list(self.G.parameters()),
+                                                 eta=self.lr)  # real learning rate
+
+        with torch.no_grad():
+
+            # Apply the update
+            for p, update in zip(self.D.parameters(), D_update):
+                p.grad = update
+
+            for p, update in zip(self.G.parameters(), G_update):
+                p.grad = update
+
         self.D_optimizer.step()
-
-        # train generator G
-
-        self.G.zero_grad()
-
-        z = torch.randn((mb_size, self.z_size))
-        y_real = torch.ones((mb_size, 1))
-
-        z, y_real = z.to(self.device), y_real.to(self.device)
-        x_mb_fake = self.G(z)
-        D_preds = self.D(x_mb_fake)
-        G_train_loss = BCE_loss(D_preds, y_real)
-        G_train_loss.backward()
         self.G_optimizer.step()
 
         # Book-keeping
 
         self.updates_completed += 1
 
-        self.D_loss_recorder[self.epochs_completed].append(float(D_train_loss.data.cpu()))
-        self.G_loss_recorder[self.epochs_completed].append(float(G_train_loss.data.cpu()))
+        self.D_loss_recorder[self.epochs_completed].append(float(total_loss.data.cpu()))
+        self.G_loss_recorder[self.epochs_completed].append(float(-total_loss.data.cpu()))
 
     def train_model(self):
 
@@ -251,8 +259,6 @@ class GAN(nn.Module):
         # training loop
 
         for epoch in range(self.epochs_completed, self.n_epochs):
-
-            # torch.manual_seed(self.seed + self.epochs_completed)  # TODO: not ideal.. should save and load random generators instead
 
             self.D_loss_recorder.append([])
             self.G_loss_recorder.append([])
