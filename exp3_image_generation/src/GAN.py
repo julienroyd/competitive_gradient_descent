@@ -205,30 +205,39 @@ class GAN(nn.Module):
 
         BCElogits_loss = nn.BCEWithLogitsLoss()
 
-        # construct loss
+        # construct loss for D
 
         x_mb_real = x_mb_real.view(-1, self.im_size ** 2)
 
         mb_size = x_mb_real.size()[0]
 
-        y_real = torch.ones((mb_size, 1))
-        y_fake = torch.zeros((mb_size, 1))
+        y_real1 = torch.ones((mb_size, 1))
+        y_fake1 = torch.zeros((mb_size, 1))
 
-        x_mb_real, y_real, y_fake = x_mb_real.to(self.device), y_real.to(self.device), y_fake.to(self.device)
-        D_preds = self.D(x_mb_real)
-        loss_real = BCElogits_loss(D_preds, y_real)
+        x_mb_real1, y_real1, y_fake1 = x_mb_real.to(self.device), y_real1.to(self.device), y_fake1.to(self.device)
+        D_preds = self.D(x_mb_real1)
+        D_real_loss = BCElogits_loss(D_preds, y_real1)
 
-        z = torch.randn((mb_size, self.z_size)).to(self.device)
-        x_mb_fake = self.G(z)
+        z1 = torch.randn((mb_size, self.z_size)).to(self.device)
+        x_mb_fake1 = self.G(z1)
 
-        D_preds = self.D(x_mb_fake)
-        loss_fake = BCElogits_loss(D_preds, y_fake)
+        D_preds = self.D(x_mb_fake1)
+        D_fake_loss = BCElogits_loss(D_preds, y_fake1)
 
-        total_loss = loss_real + loss_fake
+        D_train_loss = D_real_loss + D_fake_loss
+
+        # construct loss for G
+
+        z2 = torch.randn((mb_size, self.z_size))
+        y_real2 = torch.ones((mb_size, 1))
+        z2, y_real2 = z2.to(self.device), y_real2.to(self.device)
+        x_mb_fake2 = self.G(z2)
+        D_preds2 = self.D(x_mb_fake2)
+        G_train_loss = BCElogits_loss(D_preds2, y_real2)
 
         # Compute the update for both agents
-        D_update, G_update = self.compute_update(f=total_loss,
-                                                 g=-total_loss,
+        D_update, G_update = self.compute_update(f=D_train_loss,
+                                                 g=G_train_loss,
                                                  x=list(self.D.parameters()),
                                                  y=list(self.G.parameters()),
                                                  eta=self.lr)  # real learning rate
@@ -249,8 +258,8 @@ class GAN(nn.Module):
 
         self.updates_completed += 1
 
-        self.D_loss_recorder[self.epochs_completed].append(float(total_loss.data.cpu()))
-        self.G_loss_recorder[self.epochs_completed].append(float(-total_loss.data.cpu()))
+        self.D_loss_recorder[self.epochs_completed].append(float(D_train_loss.data.cpu()))
+        self.G_loss_recorder[self.epochs_completed].append(float(G_train_loss.data.cpu()))
 
     def train_model(self):
 
