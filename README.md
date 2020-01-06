@@ -11,6 +11,8 @@ jupyter==1.0.0
 tqdm==4.36.1
 numpy==1.17.2
 matplotlib==3.1.1
+Pillow==6.2.1
+imageio==2.6.1
 ```
 
 ## CGD on scalar games
