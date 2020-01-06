@@ -15,15 +15,15 @@ matplotlib==3.1.1
 
 ## CGD on scalar games
 
-![First game](scalar_game1.png)
+![First game](exp1_scalar_games/scalar_game1.png)
 
-![Second and third games](scalar_games23.png)
+![Second and third games](exp1_scalar_games/scalar_games23.png)
 
 The code for these experiments can be found in: [exp1_scalar_games](exp1_scalar_games/scalar_games.ipynb)
 
 ## CGD for training a GAN to fit a 2D gaussian mixture
 
-![Gaussian mixture](gan_gaussianMixture.png)
+![Gaussian mixture](exp2_gaussian_mixture/gan_gaussianMixture.png)
 
 The code for these experiments can be found in: [exp2_gaussian_mixture](exp2_gaussian_mixture/CGD_vs_GDA_GaussianMixture_GAN.ipynb)
 
