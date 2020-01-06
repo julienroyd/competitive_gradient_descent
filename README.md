@@ -28,6 +28,6 @@ The code for these experiments can be found in: [exp1_scalar_games](exp1_scalar_
 The code for these experiments can be found in: [exp2_gaussian_mixture](exp2_gaussian_mixture/CGD_vs_GDA_GaussianMixture_GAN.ipynb)
 
 
-## CGD for training a GAN to fit a 2D gaussian mixture
+## CGD for training a GAN for image generation on MNIST
 
 The code for these experiments can be found in: [exp3_image_generation](exp3_image_generation)
