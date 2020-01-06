@@ -1,5 +1,7 @@
 # competitive_gradient_descent
-A pytorch implementation of [Competitive Gradient Descent](https://arxiv.org/abs/1905.12103) (CGD) (also see [original implementation](https://github.com/f-t-s/CGD) in Julia).
+A pytorch implementation of [Competitive Gradient Descent](https://arxiv.org/abs/1905.12103) (CGD).
+
+Also check the [original implementation](https://github.com/f-t-s/CGD) in Julia.
 
 #### Requirements
 
