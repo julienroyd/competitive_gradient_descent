@@ -15,17 +15,17 @@ matplotlib==3.1.1
 
 ## CGD on scalar games
 
+In this first set of experiment reproduction, we use a very easy to read, scalar version of CGD for more clarity. The code for these experiments can be found in [exp1_scalar_games](exp1_scalar_games/scalar_games.ipynb).
+
 ![First game](exp1_scalar_games/scalar_game1.png)
 
 ![Second and third games](exp1_scalar_games/scalar_games23.png)
 
-In this first set of experiment reproduction, we use a very easy to read, scalar version of CGD for more clarity. The code for these experiments can be found in [exp1_scalar_games](exp1_scalar_games/scalar_games.ipynb).
-
 ## CGD for training a GAN to fit a 2D gaussian mixture
 
-![Gaussian mixture](exp2_gaussian_mixture/gan_gaussianMixture.png)
-
 In this second set of experiment reproduction, we use scaled-up implementation of the algorithm that uses Conjugate Gradient to approximately solve for CGD's update at each learning iteration as described in the original paper. The code for these experiments can be found in [exp2_gaussian_mixture](exp2_gaussian_mixture/CGD_vs_GDA_GaussianMixture_GAN.ipynb).
+
+![Gaussian mixture](exp2_gaussian_mixture/gan_gaussianMixture.png)
 
 
 ## CGD for training a GAN for image generation on MNIST
